@@ -1,0 +1,151 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  username  String   @unique
+  password  String
+  name      String
+  role      String   @default("USER") // Cambiado de Enum a String
+  areaId    Int
+  area      Area     @relation(fields: [areaId], references: [id])
+  isActive  Boolean  @default(true)
+  // NUEVO CAMPO
+  ticketsClosed Int  @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdTickets          Ticket[]           @relation("TicketCreator")
+  assignedTickets         Ticket[]           @relation("TicketAssigned")
+  createdTicketsTI        TicketTI[]         @relation("TicketTICreator")
+  assignedTicketsTI       TicketTI[]         @relation("TicketTIAssigned")
+  comments               Comment[]
+  requestedTransfers     TransferRequest[]   @relation("TransferRequestedBy")
+  approvedTransfers      TransferRequest[]   @relation("TransferApprovedBy")
+  managedArea            Area?               @relation("AreaManager")
+  ticketHistory          TicketHistory[]
+  
+  @@map("users")
+}
+
+model Area {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  managerId Int?     @unique
+  createdAt DateTime @default(now())
+
+  users           User[]
+  manager         User?    @relation("AreaManager", fields: [managerId], references: [id])
+  tickets         Ticket[]
+  transfersFrom   TransferRequest[] @relation("TransferFrom")
+  transfersTo     TransferRequest[] @relation("TransferTo")
+  
+  @@map("areas")
+}
+
+model Ticket {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String
+  status      String    @default("ABIERTO") // Cambiado de Enum a String
+  priority    String    @default("MEDIA")   // Cambiado de Enum a String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastActivityAt DateTime @default(now())
+  closedAt    DateTime?
+  
+  creatorId   Int
+  creator     User      @relation("TicketCreator", fields: [creatorId], references: [id])
+  
+  assignedToId Int?
+  assignedTo   User?    @relation("TicketAssigned", fields: [assignedToId], references: [id])
+  
+  areaId      Int
+  area        Area      @relation(fields: [areaId], references: [id])
+  
+  comments    Comment[]
+  transfers   TransferRequest[]
+  history     TicketHistory[]
+  
+  @@map("tickets")
+}
+
+model TicketTI {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String
+  status      String    @default("ABIERTO") // Cambiado de Enum a String
+  priority    String    @default("MEDIA")   // Cambiado de Enum a String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastActivityAt DateTime @default(now())
+  closedAt    DateTime?
+  
+  creatorId   Int
+  creator     User      @relation("TicketTICreator", fields: [creatorId], references: [id])
+  
+  assignedToId Int?
+  assignedTo   User?    @relation("TicketTIAssigned", fields: [assignedToId], references: [id])
+  
+  area        String    @default("TI")
+  comments    Comment[]
+  
+  @@map("tickets_ti")
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  content   String
+  createdAt DateTime @default(now())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  ticketId  Int?
+  ticket    Ticket?  @relation(fields: [ticketId], references: [id])
+  ticketTIId Int?
+  ticketTI  TicketTI? @relation(fields: [ticketTIId], references: [id])
+  
+  @@map("comments")
+}
+
+model TransferRequest {
+  id          Int       @id @default(autoincrement())
+  ticketId    Int
+  ticket      Ticket    @relation(fields: [ticketId], references: [id])
+  fromAreaId  Int
+  fromArea    Area      @relation("TransferFrom", fields: [fromAreaId], references: [id])
+  toAreaId    Int
+  toArea      Area      @relation("TransferTo", fields: [toAreaId], references: [id])
+  requestedById Int
+  requestedBy User      @relation("TransferRequestedBy", fields: [requestedById], references: [id])
+  status      String    @default("PENDIENTE") // Cambiado de Enum a String
+  approvedById Int?
+  approvedBy  User?     @relation("TransferApprovedBy", fields: [approvedById], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@map("transfer_requests")
+}
+
+model TicketHistory {
+  id        Int       @id @default(autoincrement())
+  ticketId  Int
+  ticket    Ticket    @relation(fields: [ticketId], references: [id])
+  action    String
+  oldValue  String?
+  newValue  String?
+  details   String?
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id])
+  createdAt DateTime  @default(now())
+  
+  @@map("ticket_history")
+}
+
