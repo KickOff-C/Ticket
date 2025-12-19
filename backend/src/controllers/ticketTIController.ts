@@ -5,42 +5,86 @@ import { AuthRequest } from '../middleware/auth';
 export class TicketTIController {
   static async createTicketTI(req: AuthRequest, res: Response) {
     try {
-      const { title, description, priority = 'MEDIA' } = req.body;
-      const userId = req.user?.userId;
+      const { title, description, priority = 'MEDIA', assignedToId } = req.body;
+      const userId = req.user?.Id_Ejecutivo;
 
-      if (!title || !description) {
+      if (!title?.trim() || !description?.trim()) {
         return res.status(400).json({ error: 'Título y descripción son requeridos' });
       }
 
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        include: { area: true }
+      if (!userId) {
+        return res.status(401).json({ error: 'Usuario no autenticado' });
+      }
+
+      const user = await prisma.usuarios.findUnique({
+        where: { Id_Ejecutivo: userId },
+        include: { 
+          area: true,
+          ticketData: true 
+        }
       });
 
       if (!user) {
         return res.status(404).json({ error: 'Usuario no encontrado' });
       }
 
-      // Cualquier usuario puede crear tickets TI, sin importar su área
-      const ticketTI = await prisma.ticketTI.create({
+      // Verificar si tiene permisos para asignar
+      const userRole = user.ticketData?.role || 'USER';
+      
+      if (assignedToId && userRole === 'USER') {
+        return res.status(403).json({ error: 'No tienes permisos para asignar tickets de TI' });
+      }
+
+      // Verificar usuario asignado si se especificó
+      let assignedUser = null;
+      if (assignedToId) {
+        assignedUser = await prisma.usuarios.findUnique({
+          where: { 
+            Id_Ejecutivo: parseInt(assignedToId),
+            activo: 1 
+          }
+        });
+
+        if (!assignedUser) {
+          return res.status(404).json({ error: 'Usuario asignado no encontrado' });
+        }
+      }
+
+      const ticketTI = await prisma.tK_tickets_ti.create({
         data: {
-          title,
-          description,
+          title: title.trim(),
+          description: description.trim(),
           priority,
-          creatorId: userId!,
+          creatorId: userId,
+          assignedToId: assignedToId ? parseInt(assignedToId) : null,
           lastActivityAt: new Date()
         },
         include: {
           creator: {
-            select: { id: true, name: true, email: true }
+            select: { 
+              Id_Ejecutivo: true, 
+              Nombre: true, 
+              Correo: true,
+              Login: true 
+            }
           },
           assignedTo: {
-            select: { id: true, name: true, email: true }
+            select: { 
+              Id_Ejecutivo: true, 
+              Nombre: true, 
+              Correo: true,
+              Login: true 
+            }
           },
           comments: {
             include: {
               user: {
-                select: { id: true, name: true, email: true }
+                select: { 
+                  Id_Ejecutivo: true, 
+                  Nombre: true, 
+                  Correo: true,
+                  Login: true 
+                }
               }
             },
             orderBy: { createdAt: 'asc' }
@@ -48,41 +92,71 @@ export class TicketTIController {
         }
       });
 
-      console.log(`📝 Ticket TI creado - ID: ${ticketTI.id}, Título: "${ticketTI.title}", Creado por: ${user.name} (Área: ${user.area?.name || 'Sin área'})`);
+      // Registrar en el historial
+      await prisma.tK_ticket_history.create({
+        data: {
+          ticketId: ticketTI.id,
+          action: 'TICKET_TI_CREATED',
+          userId: userId,
+          details: `Ticket TI "${title}" creado con prioridad ${priority}`,
+          newValue: JSON.stringify({
+            title: ticketTI.title,
+            priority: ticketTI.priority,
+            status: ticketTI.status,
+            assignedTo: assignedToId ? `Usuario ID: ${assignedToId}` : 'Sin asignar',
+            area: 'TI'
+          })
+        }
+      });
+
+      console.log(`📝 Ticket TI creado - ID: ${ticketTI.id}, Título: "${ticketTI.title}", Creado por: ${user.Nombre} (Área: ${user.area?.nombre_area || 'Sin área'})`);
 
       res.status(201).json(ticketTI);
 
     } catch (error: unknown) {
       console.error('Error creando ticket TI:', error);
       const errorMessage = error instanceof Error ? error.message : 'Error interno del servidor';
-      res.status(500).json({ error: errorMessage });
+      res.status(500).json({ 
+        error: 'Error al crear ticket TI',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+      });
     }
   }
 
   static async getTicketsTI(req: AuthRequest, res: Response) {
     try {
-      const userId = req.user?.userId;
+      const userId = req.user?.Id_Ejecutivo;
       const userRole = req.user?.role;
-      const userAreaId = req.user?.areaId;
 
-      // Parámetro para mostrar tickets cerrados
-      const { showClosed = 'false' } = req.query;
+      if (!userId) {
+        return res.status(401).json({ error: 'Usuario no autenticado' });
+      }
+
+      // Parámetros de consulta
+      const { showClosed = 'false', status, priority, minimal } = req.query;
       const includeClosed = showClosed === 'true';
 
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        include: { area: true }
+      const user = await prisma.usuarios.findUnique({
+        where: { Id_Ejecutivo: userId },
+        include: { 
+          area: true,
+          ticketData: true 
+        }
       });
 
       if (!user) {
         return res.status(404).json({ error: 'Usuario no encontrado' });
       }
 
+      const effectiveUserRole = user.ticketData?.role || userRole || 'USER';
+      const isSuperAdmin = effectiveUserRole === 'SUPERADMIN';
+      const isTIUser = user.area?.nombre_area === 'TI'; // Verificar si el usuario pertenece al área TI
+
       let whereClause: any = {};
 
       // Lógica de permisos y visibilidad de tickets cerrados
-      if (user.role === 'SUPERADMIN' || user.area?.name === 'TI') {
-        // SUPERADMIN y TI ven todos los tickets, con opción de filtrar cerrados
+      if (isSuperAdmin || isTIUser) {
+        // SUPERADMIN y usuarios de TI ven todos los tickets, con opción de filtrar cerrados
         if (!includeClosed) {
           whereClause.status = { not: 'CERRADO' };
         }
@@ -94,40 +168,87 @@ export class TicketTIController {
         };
       }
 
-      const ticketsTI = await prisma.ticketTI.findMany({
-        where: whereClause,
-        include: {
-          creator: {
-            select: { id: true, name: true, email: true }
-          },
-          assignedTo: {
-            select: { id: true, name: true, email: true }
-          },
-          comments: {
-            include: {
-              user: {
-                select: { id: true, name: true, email: true }
-              }
-            },
-            orderBy: { createdAt: 'asc' }
+      // Aplicar filtros adicionales
+      if (status && status !== 'all') {
+        whereClause.status = status;
+      }
+
+      if (priority) {
+        whereClause.priority = priority;
+      }
+
+      const useMinimal = minimal === 'true';
+      
+      const basicIncludes = {
+        creator: {
+          select: { 
+            Id_Ejecutivo: true, 
+            Nombre: true, 
+            Correo: true,
+            Login: true 
           }
         },
+        assignedTo: {
+          select: { 
+            Id_Ejecutivo: true, 
+            Nombre: true, 
+            Correo: true,
+            Login: true 
+          }
+        }
+      };
+
+      const fullIncludes = {
+        creator: {
+          select: { 
+            Id_Ejecutivo: true, 
+            Nombre: true, 
+            Correo: true,
+            Login: true 
+          }
+        },
+        assignedTo: {
+          select: { 
+            Id_Ejecutivo: true, 
+            Nombre: true, 
+            Correo: true,
+            Login: true 
+          }
+        },
+        comments: {
+          include: {
+            user: {
+              select: { 
+                Id_Ejecutivo: true, 
+                Nombre: true, 
+                Correo: true,
+                Login: true 
+              }
+            }
+          },
+          orderBy: { createdAt: 'asc' }
+        }
+      };
+
+      const ticketsTI = await prisma.tK_tickets_ti.findMany({
+        where: whereClause,
+        include: useMinimal ? basicIncludes : fullIncludes,
         orderBy: { updatedAt: 'desc' }
       });
 
       // Agregar metadata sobre tickets cerrados
       let totalWhereClause: any = {};
-      if (user.role === 'SUPERADMIN' || user.area?.name === 'TI') {
+      if (isSuperAdmin || isTIUser) {
         totalWhereClause = {};
       } else {
         totalWhereClause = { creatorId: userId };
       }
 
-      const totalTickets = await prisma.ticketTI.count({
+      const totalTickets = await prisma.tK_tickets_ti.count({
         where: totalWhereClause
       });
 
-      const closedTickets = await prisma.ticketTI.count({
+      const closedTickets = await prisma.tK_tickets_ti.count({
         where: {
           ...totalWhereClause,
           status: 'CERRADO'
@@ -140,40 +261,64 @@ export class TicketTIController {
           total: totalTickets,
           closed: closedTickets,
           showingClosed: includeClosed,
-          hasClosedTickets: closedTickets > 0
+          hasClosedTickets: closedTickets > 0,
+          isTIUser: isTIUser,
+          isSuperAdmin: isSuperAdmin
         }
       });
 
     } catch (error: unknown) {
       console.error('Error obteniendo tickets TI:', error);
       const errorMessage = error instanceof Error ? error.message : 'Error interno del servidor';
-      res.status(500).json({ error: errorMessage });
+      res.status(500).json({ 
+        error: 'Error al obtener tickets TI',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+      });
     }
   }
 
   static async getTicketTIById(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params;
-      const userId = req.user?.userId;
+      const userId = req.user?.Id_Ejecutivo;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Usuario no autenticado' });
+      }
 
       const ticketId = parseInt(id);
       if (isNaN(ticketId)) {
         return res.status(400).json({ error: 'ID de ticket inválido' });
       }
 
-      const ticketTI = await prisma.ticketTI.findUnique({
+      const ticketTI = await prisma.tK_tickets_ti.findUnique({
         where: { id: ticketId },
         include: {
           creator: {
-            select: { id: true, name: true, email: true }
+            select: { 
+              Id_Ejecutivo: true, 
+              Nombre: true, 
+              Correo: true,
+              Login: true 
+            }
           },
           assignedTo: {
-            select: { id: true, name: true, email: true }
+            select: { 
+              Id_Ejecutivo: true, 
+              Nombre: true, 
+              Correo: true,
+              Login: true 
+            }
           },
           comments: {
             include: {
               user: {
-                select: { id: true, name: true, email: true }
+                select: { 
+                  Id_Ejecutivo: true, 
+                  Nombre: true, 
+                  Correo: true,
+                  Login: true 
+                }
               }
             },
             orderBy: { createdAt: 'asc' }
@@ -185,19 +330,27 @@ export class TicketTIController {
         return res.status(404).json({ error: 'Ticket TI no encontrado' });
       }
 
-      // Verificar permisos: solo el creador o usuarios de TI/SUPERADMIN pueden ver el ticket
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        include: { area: true }
+      // Verificar permisos: solo el creador, asignado, o usuarios de TI/SUPERADMIN pueden ver el ticket
+      const user = await prisma.usuarios.findUnique({
+        where: { Id_Ejecutivo: userId },
+        include: { 
+          area: true,
+          ticketData: true 
+        }
       });
 
       if (!user) {
         return res.status(404).json({ error: 'Usuario no encontrado' });
       }
 
+      const effectiveUserRole = user.ticketData?.role || 'USER';
+      const isSuperAdmin = effectiveUserRole === 'SUPERADMIN';
+      const isTIUser = user.area?.nombre_area === 'TI';
+      
       const canView = ticketTI.creatorId === userId || 
-                     user.role === 'SUPERADMIN' || 
-                     user.area?.name === 'TI';
+                     ticketTI.assignedToId === userId || 
+                     isSuperAdmin || 
+                     isTIUser;
       
       if (!canView) {
         return res.status(403).json({ error: 'No tienes permisos para ver este ticket TI' });
@@ -208,7 +361,10 @@ export class TicketTIController {
     } catch (error: unknown) {
       console.error('Error obteniendo ticket TI:', error);
       const errorMessage = error instanceof Error ? error.message : 'Error interno del servidor';
-      res.status(500).json({ error: errorMessage });
+      res.status(500).json({ 
+        error: 'Error al obtener ticket TI',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+      });
     }
   }
 
@@ -216,10 +372,14 @@ export class TicketTIController {
     try {
       const { id } = req.params;
       const { content } = req.body;
-      const userId = req.user?.userId;
+      const userId = req.user?.Id_Ejecutivo;
 
       if (!content?.trim()) {
         return res.status(400).json({ error: 'El contenido del comentario es requerido' });
+      }
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Usuario no autenticado' });
       }
 
       const ticketId = parseInt(id);
@@ -227,7 +387,7 @@ export class TicketTIController {
         return res.status(400).json({ error: 'ID de ticket inválido' });
       }
 
-      const ticketTI = await prisma.ticketTI.findUnique({
+      const ticketTI = await prisma.tK_tickets_ti.findUnique({
         where: { id: ticketId }
       });
 
@@ -235,40 +395,53 @@ export class TicketTIController {
         return res.status(404).json({ error: 'Ticket TI no encontrado' });
       }
 
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        include: { area: true }
+      const user = await prisma.usuarios.findUnique({
+        where: { Id_Ejecutivo: userId },
+        include: { 
+          area: true,
+          ticketData: true 
+        }
       });
 
       if (!user) {
         return res.status(404).json({ error: 'Usuario no encontrado' });
       }
 
-      // Verificar permisos: solo el creador o usuarios de TI/SUPERADMIN pueden comentar
+      const effectiveUserRole = user.ticketData?.role || 'USER';
+      const isSuperAdmin = effectiveUserRole === 'SUPERADMIN';
+      const isTIUser = user.area?.nombre_area === 'TI';
+      
+      // Verificar permisos: creador, asignado, o usuarios de TI/SUPERADMIN pueden comentar
       const canComment = ticketTI.creatorId === userId || 
-                        user.role === 'SUPERADMIN' || 
-                        user.area?.name === 'TI';
+                        ticketTI.assignedToId === userId || 
+                        isSuperAdmin || 
+                        isTIUser;
       
       if (!canComment) {
         return res.status(403).json({ error: 'No tienes permisos para comentar en este ticket TI' });
       }
 
-      // Crear el comentario
-      const comment = await prisma.comment.create({
+      // Crear el comentario usando la relación correcta
+      const comment = await prisma.tK_comments.create({
         data: {
           content: content.trim(),
-          userId: userId!,
+          userId: userId,
           ticketTIId: ticketId
         },
         include: {
           user: {
-            select: { id: true, name: true, email: true }
+            select: { 
+              Id_Ejecutivo: true, 
+              Nombre: true, 
+              Correo: true,
+              Login: true 
+            }
           }
         }
       });
 
       // Actualizar lastActivityAt del ticket
-      const updatedTicketTI = await prisma.ticketTI.update({
+      const updatedTicketTI = await prisma.tK_tickets_ti.update({
         where: { id: ticketId },
         data: {
           lastActivityAt: new Date(),
@@ -276,19 +449,48 @@ export class TicketTIController {
         },
         include: {
           creator: {
-            select: { id: true, name: true, email: true }
+            select: { 
+              Id_Ejecutivo: true, 
+              Nombre: true, 
+              Correo: true,
+              Login: true 
+            }
           },
           assignedTo: {
-            select: { id: true, name: true, email: true }
+            select: { 
+              Id_Ejecutivo: true, 
+              Nombre: true, 
+              Correo: true,
+              Login: true 
+            }
           },
           comments: {
             include: {
               user: {
-                select: { id: true, name: true, email: true }
+                select: { 
+                  Id_Ejecutivo: true, 
+                  Nombre: true, 
+                  Correo: true,
+                  Login: true 
+                }
               }
             },
             orderBy: { createdAt: 'asc' }
           }
+        }
+      });
+
+      // Registrar en historial
+      await prisma.tK_ticket_history.create({
+        data: {
+          ticketId: ticketId,
+          action: 'COMMENT_ADDED_TI',
+          userId: userId,
+          details: `Comentario agregado por ${user.Nombre || user.Login} en ticket TI`,
+          newValue: JSON.stringify({
+            commentId: comment.id,
+            contentPreview: content.length > 50 ? content.substring(0, 50) + '...' : content
+          })
         }
       });
 
@@ -297,7 +499,10 @@ export class TicketTIController {
     } catch (error: unknown) {
       console.error('Error agregando comentario TI:', error);
       const errorMessage = error instanceof Error ? error.message : 'Error interno del servidor';
-      res.status(500).json({ error: errorMessage });
+      res.status(500).json({ 
+        error: 'Error al agregar comentario',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+      });
     }
   }
 
@@ -305,18 +510,20 @@ export class TicketTIController {
     try {
       const { id } = req.params;
       const { assignedToId } = req.body;
-      const userId = req.user?.userId;
-      const userRole = req.user?.role;
+      const userId = req.user?.Id_Ejecutivo;
 
       console.log('🎯 DEBUG - Iniciando asignación TI:', { 
         ticketId: id, 
         assignedToId, 
-        currentUserId: userId,
-        userRole: userRole
+        currentUserId: userId
       });
 
       if (!assignedToId) {
         return res.status(400).json({ error: 'ID de usuario asignado es requerido' });
+      }
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Usuario no autenticado' });
       }
 
       const ticketId = parseInt(id);
@@ -324,7 +531,7 @@ export class TicketTIController {
         return res.status(400).json({ error: 'ID de ticket inválido' });
       }
 
-      const ticketTI = await prisma.ticketTI.findUnique({
+      const ticketTI = await prisma.tK_tickets_ti.findUnique({
         where: { id: ticketId }
       });
 
@@ -332,24 +539,33 @@ export class TicketTIController {
         return res.status(404).json({ error: 'Ticket TI no encontrado' });
       }
 
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        include: { area: true }
+      const user = await prisma.usuarios.findUnique({
+        where: { Id_Ejecutivo: userId },
+        include: { 
+          area: true,
+          ticketData: true 
+        }
       });
 
       if (!user) {
         return res.status(404).json({ error: 'Usuario no encontrado' });
       }
 
+      const effectiveUserRole = user.ticketData?.role || 'USER';
+      const isSuperAdmin = effectiveUserRole === 'SUPERADMIN';
+      const isTIUser = user.area?.nombre_area === 'TI';
+
       console.log('🎯 DEBUG - Usuario actual:', {
-        id: user.id,
-        name: user.name,
-        role: user.role,
-        area: user.area?.name || 'Sin área'
+        id: user.Id_Ejecutivo,
+        nombre: user.Nombre,
+        role: effectiveUserRole,
+        area: user.area?.nombre_area || 'Sin área',
+        isTIUser: isTIUser,
+        isSuperAdmin: isSuperAdmin
       });
 
-      // CORREGIDO: Lógica de permisos mejorada para SUPERADMIN
-      const canAssign = user.role === 'SUPERADMIN' || (user.area && user.area.name === 'TI');
+      // Lógica de permisos mejorada: SUPERADMIN o usuarios de TI pueden asignar
+      const canAssign = isSuperAdmin || isTIUser;
       
       if (!canAssign) {
         return res.status(403).json({ 
@@ -358,8 +574,8 @@ export class TicketTIController {
       }
 
       // Verificar que el usuario asignado existe
-      const assignedUser = await prisma.user.findUnique({
-        where: { id: parseInt(assignedToId) },
+      const assignedUser = await prisma.usuarios.findUnique({
+        where: { Id_Ejecutivo: parseInt(assignedToId) },
         include: { area: true }
       });
 
@@ -368,24 +584,22 @@ export class TicketTIController {
       }
 
       console.log('🎯 DEBUG - Usuario a asignar:', {
-        id: assignedUser.id,
-        name: assignedUser.name,
-        role: assignedUser.role,
-        area: assignedUser.area?.name || 'Sin área'
+        id: assignedUser.Id_Ejecutivo,
+        nombre: assignedUser.Nombre,
+        area: assignedUser.area?.nombre_area || 'Sin área'
       });
 
-      // CORREGIDO: Lógica de validación de área mejorada
-      const canAssignToUser = assignedUser.role === 'SUPERADMIN' || 
-                             (assignedUser.area && assignedUser.area.name === 'TI');
-
-      if (!canAssignToUser) {
+      // Solo se puede asignar a usuarios del área TI (para mantener consistencia)
+      const assignedUserIsTI = assignedUser.area?.nombre_area === 'TI';
+      
+      if (!assignedUserIsTI && !isSuperAdmin) {
         return res.status(400).json({ 
-          error: 'Solo puedes asignar tickets TI a usuarios del área TI o SUPERADMIN' 
+          error: 'Solo puedes asignar tickets TI a usuarios del área TI' 
         });
       }
 
       // Actualizar el ticket
-      const updatedTicketTI = await prisma.ticketTI.update({
+      const updatedTicketTI = await prisma.tK_tickets_ti.update({
         where: { id: ticketId },
         data: {
           assignedToId: parseInt(assignedToId),
@@ -395,15 +609,30 @@ export class TicketTIController {
         },
         include: {
           creator: {
-            select: { id: true, name: true, email: true }
+            select: { 
+              Id_Ejecutivo: true, 
+              Nombre: true, 
+              Correo: true,
+              Login: true 
+            }
           },
           assignedTo: {
-            select: { id: true, name: true, email: true }
+            select: { 
+              Id_Ejecutivo: true, 
+              Nombre: true, 
+              Correo: true,
+              Login: true 
+            }
           },
           comments: {
             include: {
               user: {
-                select: { id: true, name: true, email: true }
+                select: { 
+                  Id_Ejecutivo: true, 
+                  Nombre: true, 
+                  Correo: true,
+                  Login: true 
+                }
               }
             },
             orderBy: { createdAt: 'asc' }
@@ -411,7 +640,19 @@ export class TicketTIController {
         }
       });
 
-      console.log(`📝 Ticket TI asignado - ID: ${updatedTicketTI.id}, Asignado a: ${assignedUser.name}, Por: ${user.name}`);
+      // Registrar en historial
+      await prisma.tK_ticket_history.create({
+        data: {
+          ticketId: ticketId,
+          action: 'TICKET_TI_ASIGNADO',
+          userId: userId,
+          oldValue: ticketTI.assignedToId ? `Usuario ID: ${ticketTI.assignedToId}` : 'No asignado',
+          newValue: `Usuario ID: ${assignedToId} (${assignedUser.Nombre})`,
+          details: `Ticket TI asignado a ${assignedUser.Nombre} por ${user.Nombre || user.Login}`
+        }
+      });
+
+      console.log(`📝 Ticket TI asignado - ID: ${updatedTicketTI.id}, Asignado a: ${assignedUser.Nombre}, Por: ${user.Nombre}`);
 
       console.log('✅ DEBUG - Asignación completada exitosamente');
       res.json(updatedTicketTI);
@@ -430,10 +671,14 @@ export class TicketTIController {
     try {
       const { id } = req.params;
       const { status } = req.body;
-      const userId = req.user?.userId;
+      const userId = req.user?.Id_Ejecutivo;
 
       if (!['ABIERTO', 'EN_PROGRESO', 'CERRADO'].includes(status)) {
         return res.status(400).json({ error: 'Estado inválido' });
+      }
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Usuario no autenticado' });
       }
 
       const ticketId = parseInt(id);
@@ -441,7 +686,7 @@ export class TicketTIController {
         return res.status(400).json({ error: 'ID de ticket inválido' });
       }
 
-      const ticketTI = await prisma.ticketTI.findUnique({
+      const ticketTI = await prisma.tK_tickets_ti.findUnique({
         where: { id: ticketId }
       });
 
@@ -449,26 +694,34 @@ export class TicketTIController {
         return res.status(404).json({ error: 'Ticket TI no encontrado' });
       }
 
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        include: { area: true }
+      const user = await prisma.usuarios.findUnique({
+        where: { Id_Ejecutivo: userId },
+        include: { 
+          area: true,
+          ticketData: true 
+        }
       });
 
       if (!user) {
         return res.status(404).json({ error: 'Usuario no encontrado' });
       }
 
+      const effectiveUserRole = user.ticketData?.role || 'USER';
+      const isSuperAdmin = effectiveUserRole === 'SUPERADMIN';
+      const isTIUser = user.area?.nombre_area === 'TI';
+
       // Verificar permisos: creador, asignado, o usuarios de TI/SUPERADMIN pueden cambiar estado
       const canUpdate = ticketTI.creatorId === userId || 
                        ticketTI.assignedToId === userId || 
-                       user.role === 'SUPERADMIN' || 
-                       user.area?.name === 'TI';
+                       isSuperAdmin || 
+                       isTIUser;
 
       if (!canUpdate) {
         return res.status(403).json({ error: 'No tienes permisos para actualizar este ticket TI' });
       }
 
-      const updatedTicketTI = await prisma.ticketTI.update({
+      const oldStatus = ticketTI.status;
+      const updatedTicketTI = await prisma.tK_tickets_ti.update({
         where: { id: ticketId },
         data: {
           status,
@@ -477,19 +730,46 @@ export class TicketTIController {
         },
         include: {
           creator: {
-            select: { id: true, name: true, email: true }
+            select: { 
+              Id_Ejecutivo: true, 
+              Nombre: true, 
+              Correo: true,
+              Login: true 
+            }
           },
           assignedTo: {
-            select: { id: true, name: true, email: true }
+            select: { 
+              Id_Ejecutivo: true, 
+              Nombre: true, 
+              Correo: true,
+              Login: true 
+            }
           },
           comments: {
             include: {
               user: {
-                select: { id: true, name: true, email: true }
+                select: { 
+                  Id_Ejecutivo: true, 
+                  Nombre: true, 
+                  Correo: true,
+                  Login: true 
+                }
               }
             },
             orderBy: { createdAt: 'asc' }
           }
+        }
+      });
+
+      // Registrar en historial
+      await prisma.tK_ticket_history.create({
+        data: {
+          ticketId: ticketId,
+          action: 'STATUS_CHANGED_TI',
+          userId: userId,
+          oldValue: oldStatus,
+          newValue: status,
+          details: `Estado cambiado de ${oldStatus} a ${status} por ${user.Nombre || user.Login}`
         }
       });
 
@@ -498,27 +778,39 @@ export class TicketTIController {
     } catch (error: unknown) {
       console.error('Error actualizando estado TI:', error);
       const errorMessage = error instanceof Error ? error.message : 'Error interno del servidor';
-      res.status(500).json({ error: errorMessage });
+      res.status(500).json({ 
+        error: 'Error al actualizar estado',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+      });
     }
   }
 
   static async closeTicketTI(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params;
-      const userId = req.user?.userId;
+      const userId = req.user?.Id_Ejecutivo;
 
       console.log('🔒 Cerrando ticket TI:', { id, userId });
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Usuario no autenticado' });
+      }
 
       const ticketId = parseInt(id);
       if (isNaN(ticketId)) {
         return res.status(400).json({ error: 'ID de ticket inválido' });
       }
 
-      const ticketTI = await prisma.ticketTI.findUnique({
+      const ticketTI = await prisma.tK_tickets_ti.findUnique({
         where: { id: ticketId },
         include: { 
           creator: {
-            select: { id: true, name: true, email: true }
+            select: { 
+              Id_Ejecutivo: true, 
+              Nombre: true, 
+              Correo: true,
+              Login: true 
+            }
           }
         }
       });
@@ -527,19 +819,27 @@ export class TicketTIController {
         return res.status(404).json({ error: 'Ticket TI no encontrado' });
       }
 
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        include: { area: true }
+      const user = await prisma.usuarios.findUnique({
+        where: { Id_Ejecutivo: userId },
+        include: { 
+          area: true,
+          ticketData: true 
+        }
       });
 
       if (!user) {
         return res.status(404).json({ error: 'Usuario no encontrado' });
       }
 
-      // Solo el creador o usuarios de TI/SUPERADMIN pueden cerrar el ticket
+      const effectiveUserRole = user.ticketData?.role || 'USER';
+      const isSuperAdmin = effectiveUserRole === 'SUPERADMIN';
+      const isTIUser = user.area?.nombre_area === 'TI';
+
+      // Solo el creador, asignado, o usuarios de TI/SUPERADMIN pueden cerrar el ticket
       const canClose = ticketTI.creatorId === userId || 
-                      user.role === 'SUPERADMIN' || 
-                      user.area?.name === 'TI';
+                      ticketTI.assignedToId === userId || 
+                      isSuperAdmin || 
+                      isTIUser;
 
       if (!canClose) {
         return res.status(403).json({ 
@@ -550,7 +850,7 @@ export class TicketTIController {
       // Usar transacción
       const result = await prisma.$transaction(async (tx) => {
         // 1. Actualizar ticket TI
-        const updatedTicketTI = await tx.ticketTI.update({
+        const updatedTicketTI = await tx.tK_tickets_ti.update({
           where: { id: ticketId },
           data: {
             status: 'CERRADO',
@@ -559,15 +859,30 @@ export class TicketTIController {
           },
           include: {
             creator: {
-              select: { id: true, name: true, email: true }
+              select: { 
+                Id_Ejecutivo: true, 
+                Nombre: true, 
+                Correo: true,
+                Login: true 
+              }
             },
             assignedTo: {
-              select: { id: true, name: true, email: true }
+              select: { 
+                Id_Ejecutivo: true, 
+                Nombre: true, 
+                Correo: true,
+                Login: true 
+              }
             },
             comments: {
               include: {
                 user: {
-                  select: { id: true, name: true, email: true }
+                  select: { 
+                    Id_Ejecutivo: true, 
+                    Nombre: true, 
+                    Correo: true,
+                    Login: true 
+                  }
                 }
               },
               orderBy: { createdAt: 'asc' }
@@ -577,26 +892,30 @@ export class TicketTIController {
 
         // 2. Solo incrementar contador si el usuario que cierra es el creador
         if (ticketTI.creatorId === userId) {
-          await tx.user.update({
-            where: { id: userId! },
-            data: {
+          await tx.tK_user_ticket_data.upsert({
+            where: { userId },
+            update: {
               ticketsClosed: {
                 increment: 1
               }
+            },
+            create: {
+              userId,
+              ticketsClosed: 1
             }
           });
         }
 
         // 3. Registrar en ticketHistory para métricas
-        await tx.ticketHistory.create({
+        await tx.tK_ticket_history.create({
           data: {
             ticketId: updatedTicketTI.id,
             action: 'TICKET_TI_CERRADO',
-            userId: userId!,
-            details: `Ticket TI cerrado por ${user.name}`,
+            userId: userId,
+            details: `Ticket TI cerrado por ${user.Nombre || user.Login}`,
             newValue: JSON.stringify({
               action: 'Ticket TI cerrado',
-              closedBy: user.name,
+              closedBy: user.Nombre,
               wasCreator: ticketTI.creatorId === userId,
               ticketId: updatedTicketTI.id
             })
@@ -604,7 +923,7 @@ export class TicketTIController {
         });
 
         // 4. Log en consola para tickets TI
-        console.log(`📝 Ticket TI cerrado - ID: ${updatedTicketTI.id}, Cerrado por: ${user.name}, Era creador: ${ticketTI.creatorId === userId}`);
+        console.log(`📝 Ticket TI cerrado - ID: ${updatedTicketTI.id}, Cerrado por: ${user.Nombre}, Era creador: ${ticketTI.creatorId === userId}`);
 
         return updatedTicketTI;
       });
@@ -617,6 +936,67 @@ export class TicketTIController {
       const errorMessage = error instanceof Error ? error.message : 'Error interno del servidor';
       res.status(500).json({ 
         error: 'Error interno del servidor al cerrar ticket TI',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+      });
+    }
+  }
+
+  // MÉTODO NUEVO: Obtener tickets TI asignados al usuario
+  static async getAssignedTicketsTI(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user?.Id_Ejecutivo;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Usuario no autenticado' });
+      }
+
+      const { showClosed = 'false' } = req.query;
+      const includeClosed = showClosed === 'true';
+
+      let whereClause: any = {
+        assignedToId: userId
+      };
+
+      if (!includeClosed) {
+        whereClause.status = { not: 'CERRADO' };
+      }
+
+      const assignedTickets = await prisma.tK_tickets_ti.findMany({
+        where: whereClause,
+        include: {
+          creator: {
+            select: { 
+              Id_Ejecutivo: true, 
+              Nombre: true, 
+              Correo: true,
+              Login: true 
+            }
+          },
+          assignedTo: {
+            select: { 
+              Id_Ejecutivo: true, 
+              Nombre: true, 
+              Correo: true,
+              Login: true 
+            }
+          }
+        },
+        orderBy: { updatedAt: 'desc' }
+      });
+
+      res.json({
+        tickets: assignedTickets,
+        metadata: {
+          total: assignedTickets.length,
+          showingClosed: includeClosed
+        }
+      });
+
+    } catch (error: unknown) {
+      console.error('Error obteniendo tickets TI asignados:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error interno del servidor';
+      res.status(500).json({ 
+        error: 'Error al obtener tickets TI asignados',
         details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
       });
     }

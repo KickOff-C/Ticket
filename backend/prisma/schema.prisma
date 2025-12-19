@@ -4,148 +4,181 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
-model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  username  String   @unique
-  password  String
-  name      String
-  role      String   @default("USER") // Cambiado de Enum a String
-  areaId    Int
-  area      Area     @relation(fields: [areaId], references: [id])
-  isActive  Boolean  @default(true)
-  // NUEVO CAMPO
-  ticketsClosed Int  @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  createdTickets          Ticket[]           @relation("TicketCreator")
-  assignedTickets         Ticket[]           @relation("TicketAssigned")
-  createdTicketsTI        TicketTI[]         @relation("TicketTICreator")
-  assignedTicketsTI       TicketTI[]         @relation("TicketTIAssigned")
-  comments               Comment[]
-  requestedTransfers     TransferRequest[]   @relation("TransferRequestedBy")
-  approvedTransfers      TransferRequest[]   @relation("TransferApprovedBy")
-  managedArea            Area?               @relation("AreaManager")
-  ticketHistory          TicketHistory[]
+model usuarios {
+  // Campos originales (exactamente como están en tu tabla)
+  Id_Ejecutivo            Int        @id @default(autoincrement()) @map("Id_Ejecutivo")
+  Nombre                  String?    @map("Nombre")
+  RUT                     String?    @map("RUT")
+  Login                   String?    @unique @map("Login")
+  password                String?    @map("password")
+  login_sw                String?    @map("login_sw")
+  Correo                  String?    @map("Correo")
+  Anexo                   String?    @map("Anexo")
+  Supervisor              Int?       @map("Supervisor")
+  activo                  Int?       @map("activo")
+  puede_agendar           Int?       @map("puede_agendar")
+  id_cargo                Int?       @map("id_cargo")
+  atiende_visitas         Int?       @map("atiende_visitas")
+  tiene_personal_a_cargo  Int?       @map("tiene_personal_a_cargo")
+  fecha_ingreso           DateTime?  @map("fecha_ingreso") @db.Date
+  ultima_sesion           DateTime?  @map("ultima_sesion")
+  fecha_nacimiento        DateTime?  @map("fecha_nacimiento") @db.Date
+  sexo                    Int?       @map("sexo")
+  telefono                Int?       @map("telefono")
+  fecha_desactivado       DateTime?  @map("fecha_desactivado") @db.Date
+  software                String?    @map("software")
+  pantalla_bienvenida     String?    @map("pantalla_bienvenida")
+  id_area                 Int?       @map("id_area")
   
-  @@map("users")
+  // Relación con área
+  area                    area?      @relation(fields: [id_area], references: [id_area])
+  
+  // Relación con datos de tickets
+  ticketData              TK_user_ticket_data?
+  
+  // Relaciones inversas
+  supervisorRel           usuarios?  @relation("SupervisorRelation", fields: [Supervisor], references: [Id_Ejecutivo])
+  subordinates            usuarios[] @relation("SupervisorRelation")
+  
+  // Relaciones con tickets - CON NOMBRES EXPLÍCITOS
+  createdTickets          TK_tickets[]           @relation("TicketCreator")
+  assignedTickets         TK_tickets[]           @relation("TicketAssigned")
+  createdTicketsTI        TK_tickets_ti[]        @relation("TicketTICreator")
+  assignedTicketsTI       TK_tickets_ti[]        @relation("TicketTIAssigned")
+  comments                TK_comments[]
+  requestedTransfers      TK_transfer_requests[] @relation("TransferRequestedBy")
+  approvedTransfers       TK_transfer_requests[] @relation("TransferApprovedBy")
+  managedArea             area?                  @relation("AreaManager")
+  ticketHistory           TK_ticket_history[]
+  
+  @@map("usuarios")
 }
 
-model Area {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
-  managerId Int?     @unique
-  createdAt DateTime @default(now())
-
-  users           User[]
-  manager         User?    @relation("AreaManager", fields: [managerId], references: [id])
-  tickets         Ticket[]
-  transfersFrom   TransferRequest[] @relation("TransferFrom")
-  transfersTo     TransferRequest[] @relation("TransferTo")
+model TK_user_ticket_data {
+  userId        Int      @id @map("userId")
+  user          usuarios @relation(fields: [userId], references: [Id_Ejecutivo])
+  role          String   @default("USER")
+  ticketsClosed Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
   
-  @@map("areas")
+  @@map("TK_user_ticket_data")
 }
 
-model Ticket {
-  id          Int       @id @default(autoincrement())
-  title       String
-  description String
-  status      String    @default("ABIERTO") // Cambiado de Enum a String
-  priority    String    @default("MEDIA")   // Cambiado de Enum a String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  lastActivityAt DateTime @default(now())
-  closedAt    DateTime?
+model area {
+  id_area          Int        @id @default(autoincrement()) @map("id_area")
+  nombre_area      String     @map("nombre_area")
+  TK_managerId     Int?       @unique @map("TK_managerId")
+  TK_createdAt     DateTime?  @default(now()) @map("TK_createdAt")
   
-  creatorId   Int
-  creator     User      @relation("TicketCreator", fields: [creatorId], references: [id])
+  manager          usuarios?  @relation("AreaManager", fields: [TK_managerId], references: [Id_Ejecutivo])
+  users            usuarios[]
+  tickets          TK_tickets[]
+  transfersFrom    TK_transfer_requests[] @relation("TransferFrom")
+  transfersTo      TK_transfer_requests[] @relation("TransferTo")
   
-  assignedToId Int?
-  assignedTo   User?    @relation("TicketAssigned", fields: [assignedToId], references: [id])
-  
-  areaId      Int
-  area        Area      @relation(fields: [areaId], references: [id])
-  
-  comments    Comment[]
-  transfers   TransferRequest[]
-  history     TicketHistory[]
-  
-  @@map("tickets")
+  @@map("area")
 }
 
-model TicketTI {
-  id          Int       @id @default(autoincrement())
-  title       String
-  description String
-  status      String    @default("ABIERTO") // Cambiado de Enum a String
-  priority    String    @default("MEDIA")   // Cambiado de Enum a String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  lastActivityAt DateTime @default(now())
-  closedAt    DateTime?
+model TK_tickets {
+  id              Int        @id @default(autoincrement())
+  title           String
+  description     String     @db.Text
+  status          String?    @default("ABIERTO")
+  priority        String?    @default("MEDIA")
+  createdAt       DateTime?  @default(now())
+  updatedAt       DateTime?  @updatedAt
+  lastActivityAt  DateTime?  @default(now())
+  closedAt        DateTime?
   
-  creatorId   Int
-  creator     User      @relation("TicketTICreator", fields: [creatorId], references: [id])
+  creatorId       Int
+  creator         usuarios   @relation("TicketCreator", fields: [creatorId], references: [Id_Ejecutivo])
   
-  assignedToId Int?
-  assignedTo   User?    @relation("TicketTIAssigned", fields: [assignedToId], references: [id])
+  assignedToId    Int?
+  assignedTo      usuarios?  @relation("TicketAssigned", fields: [assignedToId], references: [Id_Ejecutivo])
   
-  area        String    @default("TI")
-  comments    Comment[]
+  areaId          Int
+  area            area       @relation(fields: [areaId], references: [id_area])
   
-  @@map("tickets_ti")
+  comments        TK_comments[]
+  transfers       TK_transfer_requests[]
+  history         TK_ticket_history[]
+  
+  @@map("TK_tickets")
 }
 
-model Comment {
-  id        Int      @id @default(autoincrement())
-  content   String
-  createdAt DateTime @default(now())
+model TK_tickets_ti {
+  id              Int        @id @default(autoincrement())
+  title           String
+  description     String     @db.Text
+  status          String?    @default("ABIERTO")
+  priority        String?    @default("MEDIA")
+  createdAt       DateTime?  @default(now())
+  updatedAt       DateTime?  @updatedAt
+  lastActivityAt  DateTime?  @default(now())
+  closedAt        DateTime?
+  
+  creatorId       Int
+  creator         usuarios   @relation("TicketTICreator", fields: [creatorId], references: [Id_Ejecutivo])
+  
+  assignedToId    Int?
+  assignedTo      usuarios?  @relation("TicketTIAssigned", fields: [assignedToId], references: [Id_Ejecutivo])
+  
+  area            String?    @default("TI")
+  
+  comments        TK_comments[]
+  
+  @@map("TK_tickets_ti")
+}
+
+model TK_comments {
+  id        Int        @id @default(autoincrement())
+  content   String     @db.Text
+  createdAt DateTime?  @default(now())
   userId    Int
-  user      User     @relation(fields: [userId], references: [id])
+  user      usuarios   @relation(fields: [userId], references: [Id_Ejecutivo])
   ticketId  Int?
-  ticket    Ticket?  @relation(fields: [ticketId], references: [id])
+  ticket    TK_tickets?   @relation(fields: [ticketId], references: [id])
   ticketTIId Int?
-  ticketTI  TicketTI? @relation(fields: [ticketTIId], references: [id])
+  ticketTI  TK_tickets_ti? @relation(fields: [ticketTIId], references: [id])
   
-  @@map("comments")
+  @@map("TK_comments")
 }
 
-model TransferRequest {
-  id          Int       @id @default(autoincrement())
-  ticketId    Int
-  ticket      Ticket    @relation(fields: [ticketId], references: [id])
-  fromAreaId  Int
-  fromArea    Area      @relation("TransferFrom", fields: [fromAreaId], references: [id])
-  toAreaId    Int
-  toArea      Area      @relation("TransferTo", fields: [toAreaId], references: [id])
+model TK_transfer_requests {
+  id            Int        @id @default(autoincrement())
+  ticketId      Int
+  ticket        TK_tickets    @relation(fields: [ticketId], references: [id])
+  fromAreaId    Int
+  fromArea      area       @relation("TransferFrom", fields: [fromAreaId], references: [id_area])
+  toAreaId      Int
+  toArea        area       @relation("TransferTo", fields: [toAreaId], references: [id_area])
   requestedById Int
-  requestedBy User      @relation("TransferRequestedBy", fields: [requestedById], references: [id])
-  status      String    @default("PENDIENTE") // Cambiado de Enum a String
-  approvedById Int?
-  approvedBy  User?     @relation("TransferApprovedBy", fields: [approvedById], references: [id])
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  requestedBy   usuarios   @relation("TransferRequestedBy", fields: [requestedById], references: [Id_Ejecutivo])
+  status        String?    @default("PENDIENTE")
+  approvedById  Int?
+  approvedBy    usuarios?  @relation("TransferApprovedBy", fields: [approvedById], references: [Id_Ejecutivo])
+  createdAt     DateTime?  @default(now())
+  updatedAt     DateTime?  @updatedAt
   
-  @@map("transfer_requests")
+  @@map("TK_transfer_requests")
 }
 
-model TicketHistory {
-  id        Int       @id @default(autoincrement())
+model TK_ticket_history {
+  id        Int        @id @default(autoincrement())
   ticketId  Int
-  ticket    Ticket    @relation(fields: [ticketId], references: [id])
+  ticket    TK_tickets    @relation(fields: [ticketId], references: [id])
   action    String
-  oldValue  String?
-  newValue  String?
-  details   String?
+  oldValue  String?    @db.Text
+  newValue  String?    @db.Text
+  details   String?    @db.Text
   userId    Int
-  user      User      @relation(fields: [userId], references: [id])
-  createdAt DateTime  @default(now())
+  user      usuarios   @relation(fields: [userId], references: [Id_Ejecutivo])
+  createdAt DateTime?  @default(now())
   
-  @@map("ticket_history")
+  @@map("TK_ticket_history")
 }
-

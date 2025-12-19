@@ -1,290 +1,340 @@
-import { Response } from 'express';
+// src/controllers/TransferController.ts
+import { Request, Response } from 'express';
 import { prisma } from '../app';
-import { AuthRequest } from '../middleware/auth';
 
 export class TransferController {
-  static async requestTransfer(req: AuthRequest, res: Response) {
+  
+  // ✅ Solicitar transferencia de ticket
+  static async requestTransfer(req: Request, res: Response) {
     try {
-      const { ticketId, toAreaId } = req.body;
-      const userId = req.user?.userId;
-
-      console.log('Solicitando transferencia:', { ticketId, toAreaId, userId });
-
-      if (!ticketId || !toAreaId) {
+      const userId = (req as any).user.id;
+      const { ticketId, toAreaId, reason } = req.body;
+      
+      if (!ticketId || !toAreaId || !reason) {
         return res.status(400).json({ 
-          error: 'Ticket ID y Área destino son requeridos' 
+          error: 'ticketId, toAreaId y reason son requeridos' 
         });
       }
-
+      
       // Verificar que el ticket existe
-      const ticket = await prisma.ticket.findUnique({
-        where: { id: parseInt(ticketId) },
-        include: { 
-          area: true, 
-          creator: true,
-          assignedTo: true 
-        }
+      const ticket = await prisma.tK_tickets.findUnique({
+        where: { id: ticketId },
+        include: { area: true }
       });
-
+      
       if (!ticket) {
         return res.status(404).json({ error: 'Ticket no encontrado' });
       }
-
-      // Verificar permisos del usuario
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        include: { area: true }
+      
+      // Verificar que el usuario tiene permiso para transferir este ticket
+      const user = await prisma.usuarios.findUnique({
+        where: { Id_Ejecutivo: userId },
+        include: { ticketData: true }
       });
-
+      
       if (!user) {
         return res.status(404).json({ error: 'Usuario no encontrado' });
       }
-
-      // Solo el creador, usuarios del área, o superadmin pueden transferir
-      const canTransfer = user.id === ticket.creatorId || 
-                         user.areaId === ticket.areaId || 
-                         user.role === 'SUPERADMIN';
-
-      if (!canTransfer) {
+      
+      const userRole = user.ticketData?.role || 'USER';
+      
+      // Solo managers, admins y superadmins pueden transferir tickets
+      if (!['MANAGER', 'ADMIN', 'SUPERADMIN'].includes(userRole)) {
         return res.status(403).json({ 
-          error: 'No tienes permisos para transferir este ticket' 
+          error: 'No tiene permisos para transferir tickets' 
         });
       }
-
+      
       // Verificar que el área destino existe
       const toArea = await prisma.area.findUnique({
-        where: { id: parseInt(toAreaId) }
+        where: { id_area: toAreaId }
       });
-
+      
       if (!toArea) {
         return res.status(404).json({ error: 'Área destino no encontrada' });
       }
-
-      // No permitir transferencia a la misma área
-      if (ticket.areaId === parseInt(toAreaId)) {
+      
+      // Verificar que no sea transferencia al mismo área
+      if (ticket.areaId === toAreaId) {
         return res.status(400).json({ 
-          error: 'No puedes transferir el ticket a la misma área' 
+          error: 'No se puede transferir a la misma área' 
         });
       }
-
-      // Crear la solicitud de transferencia
-      const transferRequest = await prisma.transferRequest.create({
+      
+      // Crear solicitud de transferencia
+      const transferRequest = await prisma.tK_transfer_requests.create({
         data: {
-          ticketId: parseInt(ticketId),
+          ticketId,
           fromAreaId: ticket.areaId,
-          toAreaId: parseInt(toAreaId),
-          requestedById: userId!,
+          toAreaId,
+          requestedById: userId,
           status: 'PENDIENTE'
         },
         include: {
           ticket: {
-            include: {
-              creator: true,
-              assignedTo: true,
-              area: true
+            select: {
+              id: true,
+              title: true,
+              status: true
             }
           },
-          fromArea: true,
-          toArea: true,
-          requestedBy: true
+          fromArea: {
+            select: {
+              id_area: true,
+              nombre_area: true
+            }
+          },
+          toArea: {
+            select: {
+              id_area: true,
+              nombre_area: true
+            }
+          },
+          requestedBy: {
+            select: {
+              Id_Ejecutivo: true,
+              Nombre: true,
+              Login: true
+            }
+          }
         }
       });
-
-      // Agregar al historial del ticket
-      await prisma.ticketHistory.create({
+      
+      // Crear historial
+      await prisma.tK_ticket_history.create({
         data: {
-          ticketId: parseInt(ticketId),
+          ticketId,
           action: 'SOLICITUD_TRANSFERENCIA',
-          userId: userId!,
-          oldValue: ticket.area.name,
-          newValue: toArea.name,
-          details: 'Solicitud de transferencia a ${toArea.name} por ${user.name}. Esperando aprobación del manager.'
+          details: `Solicitada transferencia de área ${ticket.area.nombre_area} a ${toArea.nombre_area}. Razón: ${reason}`,
+          userId
         }
       });
-
-      console.log('Transferencia solicitada exitosamente:', transferRequest.id);
-
+      
       res.status(201).json({
-        message: 'Solicitud de transferencia creada exitosamente',
+        success: true,
+        message: 'Solicitud de transferencia creada',
         transfer: transferRequest
       });
-
-    } catch (error) {
+      
+    } catch (error: any) {
       console.error('Error solicitando transferencia:', error);
-      res.status(500).json({ 
-        error: 'Error interno del servidor al procesar la transferencia' 
-      });
+      res.status(500).json({ error: 'Error interno del servidor' });
     }
   }
-
-  static async getPendingTransfers(req: AuthRequest, res: Response) {
+  
+  // ✅ Obtener transferencias pendientes
+  static async getPendingTransfers(req: Request, res: Response) {
     try {
-      const userId = req.user?.userId;
-      const userRole = req.user?.role;
-      const userAreaId = req.user?.areaId;
-
-      let whereCondition: any = { status: 'PENDIENTE' };
-
-      // Managers y Admins ven transferencias pendientes de su área
-      if (userRole === 'MANAGER' || userRole === 'ADMIN') {
-        whereCondition.fromAreaId = userAreaId;
+      const userId = (req as any).user.id;
+      
+      // Obtener rol del usuario
+      const user = await prisma.usuarios.findUnique({
+        where: { Id_Ejecutivo: userId },
+        include: { ticketData: true }
+      });
+      
+      if (!user) {
+        return res.status(404).json({ error: 'Usuario no encontrado' });
       }
-      // SUPERADMIN ve todas las transferencias pendientes
-
-      const transfers = await prisma.transferRequest.findMany({
-        where: whereCondition,
-        include: {
-          ticket: {
-            include: {
-              creator: true,
-              assignedTo: true,
-              area: true,
-              comments: {
-                include: {
-                  user: true
-                },
-                orderBy: { createdAt: 'asc' }
+      
+      const userRole = user.ticketData?.role || 'USER';
+      
+      let pendingTransfers;
+      
+      if (['ADMIN', 'SUPERADMIN'].includes(userRole)) {
+        // Admins y SuperAdmins ven todas las transferencias pendientes
+        pendingTransfers = await prisma.tK_transfer_requests.findMany({
+          where: { status: 'PENDIENTE' },
+          include: {
+            ticket: {
+              select: {
+                id: true,
+                title: true,
+                status: true,
+                priority: true
+              }
+            },
+            fromArea: {
+              select: {
+                id_area: true,
+                nombre_area: true
+              }
+            },
+            toArea: {
+              select: {
+                id_area: true,
+                nombre_area: true
+              }
+            },
+            requestedBy: {
+              select: {
+                Id_Ejecutivo: true,
+                Nombre: true,
+                Login: true
               }
             }
           },
-          fromArea: true,
-          toArea: true,
-          requestedBy: true,
-          approvedBy: true
-        },
-        orderBy: { createdAt: 'desc' }
+          orderBy: { createdAt: 'desc' }
+        });
+      } else if (userRole === 'MANAGER') {
+        // Managers ven solo transferencias pendientes de su área
+        pendingTransfers = await prisma.tK_transfer_requests.findMany({
+          where: { 
+            status: 'PENDIENTE',
+            toAreaId: user.id_area // Transferencias dirigidas a su área
+          },
+          include: {
+            ticket: {
+              select: {
+                id: true,
+                title: true,
+                status: true,
+                priority: true
+              }
+            },
+            fromArea: {
+              select: {
+                id_area: true,
+                nombre_area: true
+              }
+            },
+            toArea: {
+              select: {
+                id_area: true,
+                nombre_area: true
+              }
+            },
+            requestedBy: {
+              select: {
+                Id_Ejecutivo: true,
+                Nombre: true,
+                Login: true
+              }
+            }
+          },
+          orderBy: { createdAt: 'desc' }
+        });
+      } else {
+        return res.status(403).json({ 
+          error: 'No tiene permisos para ver transferencias pendientes' 
+        });
+      }
+      
+      res.status(200).json({
+        success: true,
+        transfers: pendingTransfers,
+        count: pendingTransfers.length
       });
-
-      res.json(transfers);
-
-    } catch (error) {
+      
+    } catch (error: any) {
       console.error('Error obteniendo transferencias pendientes:', error);
       res.status(500).json({ error: 'Error interno del servidor' });
     }
   }
-
-  static async processTransfer(req: AuthRequest, res: Response) {
+  
+  // ✅ Procesar transferencia (aprobar/rechazar)
+  static async processTransfer(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const { action } = req.body; // 'approve' o 'reject'
-      const userId = req.user?.userId;
-
-      console.log('Procesando transferencia:', { id, action, userId });
-
-      if (!['approve', 'reject'].includes(action)) {
-        return res.status(400).json({ error: 'Acción inválida. Use "approve" o "reject"' });
+      const { action, reason } = req.body; // action: 'APPROVE' o 'REJECT'
+      const userId = (req as any).user.id;
+      const transferId = parseInt(id);
+      
+      if (!action || !['APPROVE', 'REJECT'].includes(action)) {
+        return res.status(400).json({ 
+          error: 'Acción inválida. Use APPROVE o REJECT' 
+        });
       }
-
-      const transfer = await prisma.transferRequest.findUnique({
-        where: { id: parseInt(id) },
+      
+      // Obtener la transferencia
+      const transfer = await prisma.tK_transfer_requests.findUnique({
+        where: { id: transferId },
         include: {
           ticket: true,
           fromArea: true,
-          toArea: true,
-          requestedBy: true
+          toArea: true
         }
       });
-
+      
       if (!transfer) {
-        return res.status(404).json({ error: 'Solicitud de transferencia no encontrada' });
+        return res.status(404).json({ error: 'Transferencia no encontrada' });
       }
-
-      // Verificar permisos para aprobar/rechazar
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        include: { area: true }
+      
+      if (transfer.status !== 'PENDIENTE') {
+        return res.status(400).json({ 
+          error: 'La transferencia ya ha sido procesada' 
+        });
+      }
+      
+      // Verificar permisos del usuario
+      const user = await prisma.usuarios.findUnique({
+        where: { Id_Ejecutivo: userId },
+        include: { ticketData: true }
       });
-
+      
       if (!user) {
         return res.status(404).json({ error: 'Usuario no encontrado' });
       }
-
-      const canProcess = user.role === 'SUPERADMIN' || 
-                         user.role === 'ADMIN' || 
-                         (user.role === 'MANAGER' && user.areaId === transfer.fromAreaId);
-
-      if (!canProcess) {
+      
+      const userRole = user.ticketData?.role || 'USER';
+      
+      // Solo managers del área destino, admins y superadmins pueden procesar
+      if (['ADMIN', 'SUPERADMIN'].includes(userRole)) {
+        // Admins y SuperAdmins pueden procesar cualquier transferencia
+      } else if (userRole === 'MANAGER') {
+        // Managers solo pueden procesar transferencias a su área
+        const isManagerOfToArea = await prisma.area.findFirst({
+          where: {
+            id_area: transfer.toAreaId,
+            TK_managerId: userId
+          }
+        });
+        
+        if (!isManagerOfToArea) {
+          return res.status(403).json({ 
+            error: 'Solo el manager del área destino puede procesar esta transferencia' 
+          });
+        }
+      } else {
         return res.status(403).json({ 
-          error: 'No tienes permisos para procesar esta transferencia' 
+          error: 'No tiene permisos para procesar transferencias' 
         });
       }
-
-      if (transfer.status !== 'PENDIENTE') {
-        return res.status(400).json({ 
-          error: 'Esta transferencia ya fue procesada' 
-        });
-      }
-
-      if (action === 'approve') {
-        // Aprobar transferencia y actualizar ticket
-        const [updatedTransfer, updatedTicket] = await prisma.$transaction([
-          prisma.transferRequest.update({
-            where: { id: parseInt(id) },
-            data: {
-              status: 'APROBADA',
-              approvedById: userId
-            },
-            include: {
-              ticket: true,
-              fromArea: true,
-              toArea: true,
-              requestedBy: true,
-              approvedBy: true
-            }
-          }),
-          prisma.ticket.update({
-            where: { id: transfer.ticketId },
-            data: {
-              areaId: transfer.toAreaId,
-              assignedToId: null // Desasignar al cambiar de área
-            },
-            include: {
-              creator: true,
-              assignedTo: true,
-              area: true,
-              comments: {
-                include: {
-                  user: true
-                },
-                orderBy: { createdAt: 'asc' }
+      
+      let updatedTransfer;
+      let ticketUpdateData: any = {};
+      
+      if (action === 'APPROVE') {
+        // Aprobar transferencia
+        updatedTransfer = await prisma.tK_transfer_requests.update({
+          where: { id: transferId },
+          data: {
+            status: 'APROBADA',
+            approvedById: userId
+          },
+          include: {
+            ticket: true,
+            fromArea: true,
+            toArea: true,
+            requestedBy: true,
+            approvedBy: {
+              select: {
+                Id_Ejecutivo: true,
+                Nombre: true,
+                Login: true
               }
             }
-          })
-        ]);
+          }
+        });
         
-
-        // Agregar al historial
-        await prisma.ticketHistory.create({
-          data: {
-            ticketId: transfer.ticketId,
-            action: 'TRANSFERENCIA_APROBADA',
-            userId: userId!,
-            oldValue: transfer.fromArea.name,
-            newValue: transfer.toArea.name,
-            details: `Transferencia aprobada por ${user.name}. Ticket movido de ${transfer.fromArea.name} a ${transfer.toArea.name}`
-          }
-        });
-        await prisma.ticketHistory.create({
-          data: {
-            ticketId: transfer.ticketId,
-            action: 'AREA_CAMBIADA',
-            userId: userId!,
-            oldValue: transfer.fromArea.name,
-            newValue: transfer.toArea.name,
-            details: `Área cambiada debido a transferencia aprobada`
-          }
-        });
-
-        res.json({
-          message: 'Transferencia aprobada exitosamente',
-          transfer: updatedTransfer,
-          ticket: updatedTicket
-        });
-
-      } else {
+        // Actualizar el ticket con la nueva área
+        ticketUpdateData.areaId = transfer.toAreaId;
+        ticketUpdateData.assignedToId = null; // Desasignar al cambiar de área
+        
+      } else if (action === 'REJECT') {
         // Rechazar transferencia
-        const updatedTransfer = await prisma.transferRequest.update({
-          where: { id: parseInt(id) },
+        updatedTransfer = await prisma.tK_transfer_requests.update({
+          where: { id: transferId },
           data: {
             status: 'RECHAZADA',
             approvedById: userId
@@ -294,28 +344,269 @@ export class TransferController {
             fromArea: true,
             toArea: true,
             requestedBy: true,
-            approvedBy: true
+            approvedBy: {
+              select: {
+                Id_Ejecutivo: true,
+                Nombre: true,
+                Login: true
+              }
+            }
           }
-        });
-
-        // Agregar al historial
-        await prisma.ticketHistory.create({
-          data: {
-            ticketId: transfer.ticketId,
-            action: 'TRANSFERENCIA_RECHAZADA',
-            userId: userId!,
-            details: `Transferencia rechazada por ${user.name}. Solicitada por ${transfer.requestedBy.name} para mover a ${transfer.toArea.name}`
-          }
-        });
-
-        res.json({
-          message: 'Transferencia rechazada',
-          transfer: updatedTransfer
         });
       }
-
-    } catch (error) {
+      
+      // Actualizar ticket si fue aprobado
+      if (action === 'APPROVE' && transfer.ticket) {
+        await prisma.tK_tickets.update({
+          where: { id: transfer.ticketId },
+          data: ticketUpdateData
+        });
+      }
+      
+      // Crear historial
+      const actionText = action === 'APPROVE' ? 'TRANSFERENCIA_APROBADA' : 'TRANSFERENCIA_RECHAZADA';
+      const details = action === 'APPROVE' 
+        ? `Transferencia aprobada. Ticket movido de ${transfer.fromArea.nombre_area} a ${transfer.toArea.nombre_area}`
+        : `Transferencia rechazada. Razón: ${reason || 'No especificada'}`;
+      
+      await prisma.tK_ticket_history.create({
+        data: {
+          ticketId: transfer.ticketId,
+          action: actionText,
+          details,
+          userId
+        }
+      });
+      
+      res.status(200).json({
+        success: true,
+        message: `Transferencia ${action === 'APPROVE' ? 'aprobada' : 'rechazada'} exitosamente`,
+        transfer: updatedTransfer
+      });
+      
+    } catch (error: any) {
       console.error('Error procesando transferencia:', error);
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
+  }
+  
+  // ✅ Obtener historial de transferencias
+  static async getTransferHistory(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user.id;
+      const { status, areaId, startDate, endDate } = req.query;
+      
+      // Construir filtros
+      const filters: any = {};
+      
+      if (status) filters.status = status;
+      if (areaId) {
+        const areaIdNum = parseInt(areaId as string);
+        filters.OR = [
+          { fromAreaId: areaIdNum },
+          { toAreaId: areaIdNum }
+        ];
+      }
+      
+      if (startDate || endDate) {
+        filters.createdAt = {};
+        if (startDate) filters.createdAt.gte = new Date(startDate as string);
+        if (endDate) filters.createdAt.lte = new Date(endDate as string);
+      }
+      
+      // Obtener historial
+      const transfers = await prisma.tK_transfer_requests.findMany({
+        where: filters,
+        include: {
+          ticket: {
+            select: {
+              id: true,
+              title: true,
+              status: true
+            }
+          },
+          fromArea: {
+            select: {
+              id_area: true,
+              nombre_area: true
+            }
+          },
+          toArea: {
+            select: {
+              id_area: true,
+              nombre_area: true
+            }
+          },
+          requestedBy: {
+            select: {
+              Id_Ejecutivo: true,
+              Nombre: true,
+              Login: true
+            }
+          },
+          approvedBy: {
+            select: {
+              Id_Ejecutivo: true,
+              Nombre: true,
+              Login: true
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 50 // Limitar resultados
+      });
+      
+      res.status(200).json({
+        success: true,
+        transfers,
+        count: transfers.length
+      });
+      
+    } catch (error: any) {
+      console.error('Error obteniendo historial de transferencias:', error);
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
+  }
+  
+  // ✅ Obtener transferencia por ID
+  static async getTransferById(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const transferId = parseInt(id);
+      
+      const transfer = await prisma.tK_transfer_requests.findUnique({
+        where: { id: transferId },
+        include: {
+          ticket: {
+            include: {
+              creator: {
+                select: {
+                  Id_Ejecutivo: true,
+                  Nombre: true,
+                  Login: true
+                }
+              },
+              assignedTo: {
+                select: {
+                  Id_Ejecutivo: true,
+                  Nombre: true,
+                  Login: true
+                }
+              },
+              area: true
+            }
+          },
+          fromArea: true,
+          toArea: true,
+          requestedBy: {
+            select: {
+              Id_Ejecutivo: true,
+              Nombre: true,
+              Login: true,
+              Correo: true
+            }
+          },
+          approvedBy: {
+            select: {
+              Id_Ejecutivo: true,
+              Nombre: true,
+              Login: true,
+              Correo: true
+            }
+          }
+        }
+      });
+      
+      if (!transfer) {
+        return res.status(404).json({ error: 'Transferencia no encontrada' });
+      }
+      
+      res.status(200).json({
+        success: true,
+        transfer
+      });
+      
+    } catch (error: any) {
+      console.error('Error obteniendo transferencia:', error);
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
+  }
+  
+  // ✅ Cancelar transferencia
+  static async cancelTransfer(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body;
+      const userId = (req as any).user.id;
+      const transferId = parseInt(id);
+      
+      // Obtener la transferencia
+      const transfer = await prisma.tK_transfer_requests.findUnique({
+        where: { id: transferId },
+        include: {
+          ticket: true,
+          requestedBy: true
+        }
+      });
+      
+      if (!transfer) {
+        return res.status(404).json({ error: 'Transferencia no encontrada' });
+      }
+      
+      if (transfer.status !== 'PENDIENTE') {
+        return res.status(400).json({ 
+          error: 'Solo se pueden cancelar transferencias pendientes' 
+        });
+      }
+      
+      // Verificar que el usuario es quien solicitó la transferencia o es admin/superadmin
+      const user = await prisma.usuarios.findUnique({
+        where: { Id_Ejecutivo: userId },
+        include: { ticketData: true }
+      });
+      
+      if (!user) {
+        return res.status(404).json({ error: 'Usuario no encontrado' });
+      }
+      
+      const userRole = user.ticketData?.role || 'USER';
+      
+      if (transfer.requestedById !== userId && !['ADMIN', 'SUPERADMIN'].includes(userRole)) {
+        return res.status(403).json({ 
+          error: 'Solo el solicitante o un administrador puede cancelar esta transferencia' 
+        });
+      }
+      
+      // Cancelar transferencia
+      const updatedTransfer = await prisma.tK_transfer_requests.update({
+        where: { id: transferId },
+        data: { status: 'CANCELADA' },
+        include: {
+          ticket: true,
+          fromArea: true,
+          toArea: true,
+          requestedBy: true
+        }
+      });
+      
+      // Crear historial
+      await prisma.tK_ticket_history.create({
+        data: {
+          ticketId: transfer.ticketId,
+          action: 'TRANSFERENCIA_CANCELADA',
+          details: `Transferencia cancelada por el solicitante. Razón: ${reason || 'No especificada'}`,
+          userId
+        }
+      });
+      
+      res.status(200).json({
+        success: true,
+        message: 'Transferencia cancelada exitosamente',
+        transfer: updatedTransfer
+      });
+      
+    } catch (error: any) {
+      console.error('Error cancelando transferencia:', error);
       res.status(500).json({ error: 'Error interno del servidor' });
     }
   }

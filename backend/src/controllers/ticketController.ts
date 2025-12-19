@@ -6,7 +6,7 @@ export class TicketController {
   static async createTicket(req: AuthRequest, res: Response) {
     try {
       const { title, description, priority = 'MEDIA', assignedToId } = req.body;
-      const userId = req.user?.userId;
+      const userId = req.user?.Id_Ejecutivo;
 
       if (!title?.trim() || !description?.trim()) {
         return res.status(400).json({ 
@@ -14,66 +14,96 @@ export class TicketController {
         });
       }
 
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        include: { area: true }
+      if (!userId) {
+        return res.status(401).json({ error: 'Usuario no autenticado' });
+      }
+
+      const user = await prisma.usuarios.findUnique({
+        where: { Id_Ejecutivo: userId },
+        include: { 
+          area: true,
+          ticketData: true 
+        }
       });
 
       if (!user) {
         return res.status(404).json({ error: 'Usuario no encontrado' });
       }
 
+      if (!user.id_area) {
+        return res.status(400).json({ error: 'El usuario no tiene un área asignada' });
+      }
+
+      // Verificar permisos para asignar
+      const userRole = user.ticketData?.role || 'USER';
+      
       if (assignedToId) {
-        if (user.role === 'USER') {
+        if (userRole === 'USER') {
           return res.status(403).json({ error: 'No tienes permisos para asignar tickets' });
         }
 
-        const assignedUser = await prisma.user.findUnique({
-          where: { id: assignedToId, isActive: true }
+        const assignedUser = await prisma.usuarios.findUnique({
+          where: { 
+            Id_Ejecutivo: parseInt(assignedToId),
+            activo: 1 
+          }
         });
 
-        if (!assignedUser || assignedUser.areaId !== user.areaId) {
+        if (!assignedUser || assignedUser.id_area !== user.id_area) {
           return res.status(400).json({ 
             error: 'No puedes asignar tickets a usuarios de otras áreas' 
           });
         }
       }
 
-      const ticket = await prisma.ticket.create({
+      const ticket = await prisma.tK_tickets.create({
         data: {
           title: title.trim(),
           description: description.trim(),
           priority,
-          creatorId: userId!,
-          areaId: user.areaId,
-          assignedToId: assignedToId || null,
+          creatorId: userId,
+          areaId: user.id_area,
+          assignedToId: assignedToId ? parseInt(assignedToId) : null,
           lastActivityAt: new Date()
         },
         include: {
           creator: {
-            select: { id: true, name: true, email: true }
+            select: { 
+              Id_Ejecutivo: true, 
+              Nombre: true, 
+              Correo: true,
+              Login: true 
+            }
           },
           assignedTo: {
-            select: { id: true, name: true, email: true }
+            select: { 
+              Id_Ejecutivo: true, 
+              Nombre: true, 
+              Correo: true,
+              Login: true 
+            }
           },
           area: {
-            select: { id: true, name: true }
+            select: { 
+              id_area: true, 
+              nombre_area: true 
+            }
           }
         }
       });
 
-      await prisma.ticketHistory.create({
+      await prisma.tK_ticket_history.create({
         data: {
           ticketId: ticket.id,
           action: 'TICKET_CREATED',
-          userId: userId!,
+          userId: userId,
           details: `Ticket "${title}" creado con prioridad ${priority}`,
           newValue: JSON.stringify({
             title: ticket.title,
             priority: ticket.priority,
             status: ticket.status,
             assignedTo: assignedToId ? `Usuario ID: ${assignedToId}` : 'Sin asignar',
-            area: user.area.name
+            area: user.area?.nombre_area
           })
         }
       });
@@ -91,27 +121,36 @@ export class TicketController {
 
   static async getTickets(req: AuthRequest, res: Response) {
     try {
-      const userId = req.user?.userId;
+      const userId = req.user?.Id_Ejecutivo;
       const userRole = req.user?.role;
       const userAreaId = req.user?.areaId;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Usuario no autenticado' });
+      }
 
       // Parámetros de consulta
       const { status, priority, minimal, showClosed = 'false' } = req.query;
       const includeClosed = showClosed === 'true';
 
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        include: { area: true }
+      const user = await prisma.usuarios.findUnique({
+        where: { Id_Ejecutivo: userId },
+        include: { 
+          area: true,
+          ticketData: true 
+        }
       });
 
       if (!user) {
         return res.status(404).json({ error: 'Usuario no encontrado' });
       }
 
+      const effectiveUserRole = user.ticketData?.role || userRole || 'USER';
+
       let whereClause: any = {};
 
       // Lógica de permisos mejorada con manejo de tickets cerrados
-      switch (userRole) {
+      switch (effectiveUserRole) {
         case 'USER':
           whereClause = {
             OR: [
@@ -160,31 +199,64 @@ export class TicketController {
       // Includes básicos para listados
       const basicIncludes = {
         creator: {
-          select: { id: true, name: true, email: true }
+          select: { 
+            Id_Ejecutivo: true, 
+            Nombre: true, 
+            Correo: true,
+            Login: true 
+          }
         },
         assignedTo: {
-          select: { id: true, name: true, email: true }
+          select: { 
+            Id_Ejecutivo: true, 
+            Nombre: true, 
+            Correo: true,
+            Login: true 
+          }
         },
         area: {
-          select: { id: true, name: true }
+          select: { 
+            id_area: true, 
+            nombre_area: true 
+          }
         }
       };
 
       // Includes completos para detalle
       const fullIncludes = {
         creator: {
-          select: { id: true, name: true, email: true, role: true }
+          select: { 
+            Id_Ejecutivo: true, 
+            Nombre: true, 
+            Correo: true,
+            Login: true,
+            ticketData: true 
+          }
         },
         assignedTo: {
-          select: { id: true, name: true, email: true, role: true }
+          select: { 
+            Id_Ejecutivo: true, 
+            Nombre: true, 
+            Correo: true,
+            Login: true,
+            ticketData: true 
+          }
         },
         area: {
-          select: { id: true, name: true }
+          select: { 
+            id_area: true, 
+            nombre_area: true 
+          }
         },
         comments: {
           include: {
             user: {
-              select: { id: true, name: true, email: true }
+              select: { 
+                Id_Ejecutivo: true, 
+                Nombre: true, 
+                Correo: true,
+                Login: true 
+              }
             }
           },
           orderBy: { createdAt: 'asc' }
@@ -192,30 +264,51 @@ export class TicketController {
         transfers: {
           include: {
             fromArea: {
-              select: { id: true, name: true }
+              select: { 
+                id_area: true, 
+                nombre_area: true 
+              }
             },
             toArea: {
-              select: { id: true, name: true }
+              select: { 
+                id_area: true, 
+                nombre_area: true 
+              }
             },
             requestedBy: {
-              select: { id: true, name: true, email: true }
+              select: { 
+                Id_Ejecutivo: true, 
+                Nombre: true, 
+                Correo: true,
+                Login: true 
+              }
             },
             approvedBy: {
-              select: { id: true, name: true, email: true }
+              select: { 
+                Id_Ejecutivo: true, 
+                Nombre: true, 
+                Correo: true,
+                Login: true 
+              }
             }
           }
         },
         history: {
           include: {
             user: {
-              select: { id: true, name: true, email: true }
+              select: { 
+                Id_Ejecutivo: true, 
+                Nombre: true, 
+                Correo: true,
+                Login: true 
+              }
             }
           },
           orderBy: { createdAt: 'asc' }
         }
       };
 
-      const tickets = await prisma.ticket.findMany({
+      const tickets = await prisma.tK_tickets.findMany({
         where: whereClause,
         include: useMinimal ? basicIncludes : fullIncludes,
         orderBy: { updatedAt: 'desc' }
@@ -223,7 +316,7 @@ export class TicketController {
 
       // Agregar metadata para el frontend
       let totalWhereClause: any = {};
-      switch (userRole) {
+      switch (effectiveUserRole) {
         case 'USER':
           totalWhereClause = {
             OR: [
@@ -243,11 +336,11 @@ export class TicketController {
           totalWhereClause = { creatorId: userId };
       }
 
-      const totalTickets = await prisma.ticket.count({
+      const totalTickets = await prisma.tK_tickets.count({
         where: totalWhereClause
       });
 
-      const closedTickets = await prisma.ticket.count({
+      const closedTickets = await prisma.tK_tickets.count({
         where: {
           ...totalWhereClause,
           status: 'CERRADO'
@@ -277,31 +370,55 @@ export class TicketController {
   static async getTicketById(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params;
-      const userId = req.user?.userId;
+      const userId = req.user?.Id_Ejecutivo;
       const userRole = req.user?.role;
       const userAreaId = req.user?.areaId;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Usuario no autenticado' });
+      }
 
       const ticketId = parseInt(id);
       if (isNaN(ticketId)) {
         return res.status(400).json({ error: 'ID de ticket inválido' });
       }
 
-      const ticket = await prisma.ticket.findUnique({
+      const ticket = await prisma.tK_tickets.findUnique({
         where: { id: ticketId },
         include: {
           creator: {
-            select: { id: true, name: true, email: true, role: true }
+            select: { 
+              Id_Ejecutivo: true, 
+              Nombre: true, 
+              Correo: true,
+              Login: true,
+              ticketData: true 
+            }
           },
           assignedTo: {
-            select: { id: true, name: true, email: true, role: true }
+            select: { 
+              Id_Ejecutivo: true, 
+              Nombre: true, 
+              Correo: true,
+              Login: true,
+              ticketData: true 
+            }
           },
           area: {
-            select: { id: true, name: true }
+            select: { 
+              id_area: true, 
+              nombre_area: true 
+            }
           },
           comments: {
             include: {
               user: {
-                select: { id: true, name: true, email: true }
+                select: { 
+                  Id_Ejecutivo: true, 
+                  Nombre: true, 
+                  Correo: true,
+                  Login: true 
+                }
               }
             },
             orderBy: { createdAt: 'asc' }
@@ -309,23 +426,44 @@ export class TicketController {
           transfers: {
             include: {
               fromArea: {
-                select: { id: true, name: true }
+                select: { 
+                  id_area: true, 
+                  nombre_area: true 
+                }
               },
               toArea: {
-                select: { id: true, name: true }
+                select: { 
+                  id_area: true, 
+                  nombre_area: true 
+                }
               },
               requestedBy: {
-                select: { id: true, name: true, email: true }
+                select: { 
+                  Id_Ejecutivo: true, 
+                  Nombre: true, 
+                  Correo: true,
+                  Login: true 
+                }
               },
               approvedBy: {
-                select: { id: true, name: true, email: true }
+                select: { 
+                  Id_Ejecutivo: true, 
+                  Nombre: true, 
+                  Correo: true,
+                  Login: true 
+                }
               }
             }
           },
           history: {
             include: {
               user: {
-                select: { id: true, name: true, email: true }
+                select: { 
+                  Id_Ejecutivo: true, 
+                  Nombre: true, 
+                  Correo: true,
+                  Login: true 
+                }
               }
             },
             orderBy: { createdAt: 'asc' }
@@ -337,7 +475,7 @@ export class TicketController {
         return res.status(404).json({ error: 'Ticket no encontrado' });
       }
 
-      const canView = await TicketController.canViewTicket(userId!, userRole!, userAreaId!, ticket);
+      const canView = await TicketController.canViewTicket(userId, userRole!, userAreaId!, ticket);
       if (!canView) {
         return res.status(403).json({ error: 'No tienes permisos para ver este ticket' });
       }
@@ -357,10 +495,14 @@ export class TicketController {
     try {
       const { id } = req.params;
       const { content } = req.body;
-      const userId = req.user?.userId;
+      const userId = req.user?.Id_Ejecutivo;
 
       if (!content?.trim()) {
         return res.status(400).json({ error: 'El contenido del comentario es requerido' });
+      }
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Usuario no autenticado' });
       }
 
       const ticketId = parseInt(id);
@@ -368,7 +510,7 @@ export class TicketController {
         return res.status(400).json({ error: 'ID de ticket inválido' });
       }
 
-      const ticket = await prisma.ticket.findUnique({
+      const ticket = await prisma.tK_tickets.findUnique({
         where: { id: ticketId }
       });
 
@@ -376,32 +518,41 @@ export class TicketController {
         return res.status(404).json({ error: 'Ticket no encontrado' });
       }
 
-      const user = await prisma.user.findUnique({
-        where: { id: userId }
+      const user = await prisma.usuarios.findUnique({
+        where: { Id_Ejecutivo: userId },
+        include: { ticketData: true }
       });
 
       if (!user) {
         return res.status(404).json({ error: 'Usuario no encontrado' });
       }
 
-      const canComment = await TicketController.canViewTicket(userId!, user.role, user.areaId, ticket);
+      const userRole = user.ticketData?.role || 'USER';
+      const canComment = await TicketController.canViewTicket(userId, userRole, user.id_area || 0, ticket);
       if (!canComment) {
         return res.status(403).json({ error: 'No tienes permisos para comentar en este ticket' });
       }
 
       const result = await prisma.$transaction(async (tx) => {
-        const comment = await tx.comment.create({
+        const comment = await tx.tK_comments.create({
           data: {
             content: content.trim(),
-            userId: userId!,
+            userId: userId,
             ticketId: ticketId
           },
           include: {
-            user: { select: { id: true, name: true, email: true } }
+            user: { 
+              select: { 
+                Id_Ejecutivo: true, 
+                Nombre: true, 
+                Correo: true,
+                Login: true 
+              } 
+            }
           }
         });
 
-        const updatedTicket = await tx.ticket.update({
+        const updatedTicket = await tx.tK_tickets.update({
           where: { id: ticketId },
           data: {
             lastActivityAt: new Date(),
@@ -409,18 +560,36 @@ export class TicketController {
           },
           include: {
             creator: {
-              select: { id: true, name: true, email: true, role: true }
+              select: { 
+                Id_Ejecutivo: true, 
+                Nombre: true, 
+                Correo: true,
+                Login: true 
+              }
             },
             assignedTo: {
-              select: { id: true, name: true, email: true, role: true }
+              select: { 
+                Id_Ejecutivo: true, 
+                Nombre: true, 
+                Correo: true,
+                Login: true 
+              }
             },
             area: {
-              select: { id: true, name: true }
+              select: { 
+                id_area: true, 
+                nombre_area: true 
+              }
             },
             comments: {
               include: {
                 user: {
-                  select: { id: true, name: true, email: true }
+                  select: { 
+                    Id_Ejecutivo: true, 
+                    Nombre: true, 
+                    Correo: true,
+                    Login: true 
+                  }
                 }
               },
               orderBy: { createdAt: 'asc' }
@@ -428,23 +597,44 @@ export class TicketController {
             transfers: {
               include: {
                 fromArea: {
-                  select: { id: true, name: true }
+                  select: { 
+                    id_area: true, 
+                    nombre_area: true 
+                  }
                 },
                 toArea: {
-                  select: { id: true, name: true }
+                  select: { 
+                    id_area: true, 
+                    nombre_area: true 
+                  }
                 },
                 requestedBy: {
-                  select: { id: true, name: true, email: true }
+                  select: { 
+                    Id_Ejecutivo: true, 
+                    Nombre: true, 
+                    Correo: true,
+                    Login: true 
+                  }
                 },
                 approvedBy: {
-                  select: { id: true, name: true, email: true }
+                  select: { 
+                    Id_Ejecutivo: true, 
+                    Nombre: true, 
+                    Correo: true,
+                    Login: true 
+                  }
                 }
               }
             },
             history: {
               include: {
                 user: {
-                  select: { id: true, name: true, email: true }
+                  select: { 
+                    Id_Ejecutivo: true, 
+                    Nombre: true, 
+                    Correo: true,
+                    Login: true 
+                  }
                 }
               },
               orderBy: { createdAt: 'asc' }
@@ -452,12 +642,12 @@ export class TicketController {
           }
         });
 
-        await tx.ticketHistory.create({
+        await tx.tK_ticket_history.create({
           data: {
             ticketId: ticketId,
             action: 'COMMENT_ADDED',
-            userId: userId!,
-            details: `Comentario agregado por ${user.name}`,
+            userId: userId,
+            details: `Comentario agregado por ${user.Nombre || user.Login}`,
             newValue: JSON.stringify({
               commentId: comment.id,
               contentPreview: content.length > 50 ? content.substring(0, 50) + '...' : content
@@ -482,14 +672,18 @@ export class TicketController {
   static async closeTicket(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params;
-      const userId = req.user?.userId;
+      const userId = req.user?.Id_Ejecutivo;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Usuario no autenticado' });
+      }
 
       const ticketId = parseInt(id);
       if (isNaN(ticketId)) {
         return res.status(400).json({ error: 'ID de ticket inválido' });
       }
 
-      const ticket = await prisma.ticket.findUnique({
+      const ticket = await prisma.tK_tickets.findUnique({
         where: { id: ticketId },
         include: { creator: true }
       });
@@ -509,7 +703,7 @@ export class TicketController {
       }
 
       const result = await prisma.$transaction(async (tx) => {
-        const updatedTicket = await tx.ticket.update({
+        const updatedTicket = await tx.tK_tickets.update({
           where: { id: ticketId },
           data: {
             status: 'CERRADO',
@@ -518,31 +712,49 @@ export class TicketController {
           },
           include: {
             creator: {
-              select: { id: true, name: true, email: true }
+              select: { 
+                Id_Ejecutivo: true, 
+                Nombre: true, 
+                Correo: true,
+                Login: true 
+              }
             },
             assignedTo: {
-              select: { id: true, name: true, email: true }
+              select: { 
+                Id_Ejecutivo: true, 
+                Nombre: true, 
+                Correo: true,
+                Login: true 
+              }
             },
             area: {
-              select: { id: true, name: true }
+              select: { 
+                id_area: true, 
+                nombre_area: true 
+              }
             }
           }
         });
 
-        await tx.user.update({
-          where: { id: userId! },
-          data: {
+        // Actualizar contador de tickets cerrados en TK_user_ticket_data
+        await tx.tK_user_ticket_data.upsert({
+          where: { userId },
+          update: {
             ticketsClosed: {
               increment: 1
             }
+          },
+          create: {
+            userId,
+            ticketsClosed: 1
           }
         });
 
-        await tx.ticketHistory.create({
+        await tx.tK_ticket_history.create({
           data: {
             ticketId: ticketId,
             action: 'TICKET_CERRADO',
-            userId: userId!,
+            userId: userId,
             details: `Ticket cerrado por el creador`,
             oldValue: ticket.status,
             newValue: 'CERRADO'
@@ -571,10 +783,14 @@ export class TicketController {
     try {
       const { id } = req.params;
       const { status } = req.body;
-      const userId = req.user?.userId;
+      const userId = req.user?.Id_Ejecutivo;
 
       if (!['ABIERTO', 'EN_PROGRESO', 'CERRADO'].includes(status)) {
         return res.status(400).json({ error: 'Estado inválido' });
+      }
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Usuario no autenticado' });
       }
 
       const ticketId = parseInt(id);
@@ -582,7 +798,7 @@ export class TicketController {
         return res.status(400).json({ error: 'ID de ticket inválido' });
       }
 
-      const ticket = await prisma.ticket.findUnique({
+      const ticket = await prisma.tK_tickets.findUnique({
         where: { id: ticketId }
       });
 
@@ -590,21 +806,23 @@ export class TicketController {
         return res.status(404).json({ error: 'Ticket no encontrado' });
       }
 
-      const user = await prisma.user.findUnique({
-        where: { id: userId }
+      const user = await prisma.usuarios.findUnique({
+        where: { Id_Ejecutivo: userId },
+        include: { ticketData: true }
       });
 
       if (!user) {
         return res.status(404).json({ error: 'Usuario no encontrado' });
       }
 
-      const canUpdate = await TicketController.canUpdateTicket(userId!, user.role, user.areaId, ticket);
+      const userRole = user.ticketData?.role || 'USER';
+      const canUpdate = await TicketController.canUpdateTicket(userId, userRole, user.id_area || 0, ticket);
       if (!canUpdate) {
         return res.status(403).json({ error: 'No tienes permisos para actualizar este ticket' });
       }
 
       const oldStatus = ticket.status;
-      const updatedTicket = await prisma.ticket.update({
+      const updatedTicket = await prisma.tK_tickets.update({
         where: { id: ticketId },
         data: {
           status,
@@ -613,18 +831,36 @@ export class TicketController {
         },
         include: {
           creator: {
-            select: { id: true, name: true, email: true, role: true }
+            select: { 
+              Id_Ejecutivo: true, 
+              Nombre: true, 
+              Correo: true,
+              Login: true 
+            }
           },
           assignedTo: {
-            select: { id: true, name: true, email: true, role: true }
+            select: { 
+              Id_Ejecutivo: true, 
+              Nombre: true, 
+              Correo: true,
+              Login: true 
+            }
           },
           area: {
-            select: { id: true, name: true }
+            select: { 
+              id_area: true, 
+              nombre_area: true 
+            }
           },
           comments: {
             include: {
               user: {
-                select: { id: true, name: true, email: true }
+                select: { 
+                  Id_Ejecutivo: true, 
+                  Nombre: true, 
+                  Correo: true,
+                  Login: true 
+                }
               }
             },
             orderBy: { createdAt: 'asc' }
@@ -632,23 +868,44 @@ export class TicketController {
           transfers: {
             include: {
               fromArea: {
-                select: { id: true, name: true }
+                select: { 
+                  id_area: true, 
+                  nombre_area: true 
+                }
               },
               toArea: {
-                select: { id: true, name: true }
+                select: { 
+                  id_area: true, 
+                  nombre_area: true 
+                }
               },
               requestedBy: {
-                select: { id: true, name: true, email: true }
+                select: { 
+                  Id_Ejecutivo: true, 
+                  Nombre: true, 
+                  Correo: true,
+                  Login: true 
+                }
               },
               approvedBy: {
-                select: { id: true, name: true, email: true }
+                select: { 
+                  Id_Ejecutivo: true, 
+                  Nombre: true, 
+                  Correo: true,
+                  Login: true 
+                }
               }
             }
           },
           history: {
             include: {
               user: {
-                select: { id: true, name: true, email: true }
+                select: { 
+                  Id_Ejecutivo: true, 
+                  Nombre: true, 
+                  Correo: true,
+                  Login: true 
+                }
               }
             },
             orderBy: { createdAt: 'asc' }
@@ -656,14 +913,14 @@ export class TicketController {
         }
       });
 
-      await prisma.ticketHistory.create({
+      await prisma.tK_ticket_history.create({
         data: {
           ticketId: ticket.id,
           action: 'STATUS_CHANGED',
-          userId: userId!,
+          userId: userId,
           oldValue: oldStatus,
           newValue: status,
-          details: `Estado cambiado de ${oldStatus} a ${status} por ${user.name}`
+          details: `Estado cambiado de ${oldStatus} a ${status} por ${user.Nombre || user.Login}`
         }
       });
 
@@ -679,10 +936,14 @@ export class TicketController {
     try {
       const { id } = req.params;
       const { userId: userToAssignId } = req.body;
-      const currentUserId = req.user?.userId;
+      const currentUserId = req.user?.Id_Ejecutivo;
 
       if (!userToAssignId) {
         return res.status(400).json({ error: 'ID de usuario es requerido' });
+      }
+
+      if (!currentUserId) {
+        return res.status(401).json({ error: 'Usuario no autenticado' });
       }
 
       const ticketId = parseInt(id);
@@ -690,7 +951,7 @@ export class TicketController {
         return res.status(400).json({ error: 'ID de ticket inválido' });
       }
 
-      const ticket = await prisma.ticket.findUnique({
+      const ticket = await prisma.tK_tickets.findUnique({
         where: { id: ticketId },
         include: {
           area: true,
@@ -703,8 +964,8 @@ export class TicketController {
         return res.status(404).json({ error: 'Ticket no encontrado' });
       }
 
-      const userToAssign = await prisma.user.findUnique({
-        where: { id: parseInt(userToAssignId) },
+      const userToAssign = await prisma.usuarios.findUnique({
+        where: { Id_Ejecutivo: parseInt(userToAssignId) },
         include: { area: true }
       });
 
@@ -712,25 +973,30 @@ export class TicketController {
         return res.status(404).json({ error: 'Usuario no encontrado' });
       }
 
-      if (userToAssign.areaId !== ticket.areaId) {
+      if (userToAssign.id_area !== ticket.areaId) {
         return res.status(400).json({ 
           error: 'El usuario no pertenece al área de este ticket' 
         });
       }
 
-      const currentUser = await prisma.user.findUnique({
-        where: { id: currentUserId },
-        include: { area: true }
+      const currentUser = await prisma.usuarios.findUnique({
+        where: { Id_Ejecutivo: currentUserId },
+        include: { 
+          area: true,
+          ticketData: true 
+        }
       });
 
       if (!currentUser) {
         return res.status(404).json({ error: 'Usuario actual no encontrado' });
       }
 
+      const currentUserRole = currentUser.ticketData?.role || 'USER';
+      
       const canAssign = 
-        currentUser.role === 'SUPERADMIN' ||
-        currentUser.role === 'ADMIN' ||
-        (currentUser.role === 'MANAGER' && currentUser.areaId === ticket.areaId);
+        currentUserRole === 'SUPERADMIN' ||
+        currentUserRole === 'ADMIN' ||
+        (currentUserRole === 'MANAGER' && currentUser.id_area === ticket.areaId);
 
       if (!canAssign) {
         return res.status(403).json({ 
@@ -738,7 +1004,7 @@ export class TicketController {
         });
       }
 
-      const updatedTicket = await prisma.ticket.update({
+      const updatedTicket = await prisma.tK_tickets.update({
         where: { id: ticketId },
         data: {
           assignedToId: parseInt(userToAssignId),
@@ -747,18 +1013,36 @@ export class TicketController {
         },
         include: {
           creator: {
-            select: { id: true, name: true, email: true, role: true }
+            select: { 
+              Id_Ejecutivo: true, 
+              Nombre: true, 
+              Correo: true,
+              Login: true 
+            }
           },
           assignedTo: {
-            select: { id: true, name: true, email: true, role: true }
+            select: { 
+              Id_Ejecutivo: true, 
+              Nombre: true, 
+              Correo: true,
+              Login: true 
+            }
           },
           area: {
-            select: { id: true, name: true }
+            select: { 
+              id_area: true, 
+              nombre_area: true 
+            }
           },
           comments: {
             include: {
               user: {
-                select: { id: true, name: true, email: true }
+                select: { 
+                  Id_Ejecutivo: true, 
+                  Nombre: true, 
+                  Correo: true,
+                  Login: true 
+                }
               }
             },
             orderBy: { createdAt: 'asc' }
@@ -766,23 +1050,44 @@ export class TicketController {
           transfers: {
             include: {
               fromArea: {
-                select: { id: true, name: true }
+                select: { 
+                  id_area: true, 
+                  nombre_area: true 
+                }
               },
               toArea: {
-                select: { id: true, name: true }
+                select: { 
+                  id_area: true, 
+                  nombre_area: true 
+                }
               },
               requestedBy: {
-                select: { id: true, name: true, email: true }
+                select: { 
+                  Id_Ejecutivo: true, 
+                  Nombre: true, 
+                  Correo: true,
+                  Login: true 
+                }
               },
               approvedBy: {
-                select: { id: true, name: true, email: true }
+                select: { 
+                  Id_Ejecutivo: true, 
+                  Nombre: true, 
+                  Correo: true,
+                  Login: true 
+                }
               }
             }
           },
           history: {
             include: {
               user: {
-                select: { id: true, name: true, email: true }
+                select: { 
+                  Id_Ejecutivo: true, 
+                  Nombre: true, 
+                  Correo: true,
+                  Login: true 
+                }
               }
             },
             orderBy: { createdAt: 'asc' }
@@ -790,14 +1095,14 @@ export class TicketController {
         }
       });
 
-      await prisma.ticketHistory.create({
+      await prisma.tK_ticket_history.create({
         data: {
           ticketId: ticketId,
           action: 'TICKET_ASIGNADO',
-          userId: currentUserId!,
-          oldValue: ticket.assignedTo ? ticket.assignedTo.name : 'No asignado',
-          newValue: userToAssign.name,
-          details: `Ticket asignado a ${userToAssign.name} por ${currentUser.name}`
+          userId: currentUserId,
+          oldValue: ticket.assignedTo ? ticket.assignedTo.Nombre : 'No asignado',
+          newValue: userToAssign.Nombre,
+          details: `Ticket asignado a ${userToAssign.Nombre} por ${currentUser.Nombre || currentUser.Login}`
         }
       });
 
@@ -818,7 +1123,7 @@ export class TicketController {
     if (ticket.creatorId === userId) return true;
     if (ticket.assignedToId === userId) return true;
     
-    const transfer = await prisma.transferRequest.findFirst({
+    const transfer = await prisma.tK_transfer_requests.findFirst({
       where: {
         ticketId: ticket.id,
         OR: [
