@@ -209,7 +209,7 @@ export class AuthService {
   static async refreshToken(refreshToken: string): Promise<RefreshTokenResult> {
     try {
       // Verificar refresh token
-      const payload = verifyJWT(refreshToken, process.env.JWT_REFRESH_SECRET!);
+      const payload = verifyJWT(refreshToken, process.env.JWT_REFRESH_SECRET);
       
       if (!payload || typeof payload !== 'object' || !('id' in payload)) {
         return { success: false, message: 'Refresh token inválido' };
@@ -255,7 +255,7 @@ export class AuthService {
   // ✅ Verificar token
   static async verifyToken(token: string): Promise<VerifyTokenResult> {
     try {
-      const payload = verifyJWT(token, process.env.JWT_SECRET!);
+      const payload = verifyJWT(token, process.env.JWT_SECRET);
       
       if (!payload) {
         return { valid: false, message: 'Token inválido' };

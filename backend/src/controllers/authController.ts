@@ -30,13 +30,13 @@ export class AuthController {
       
       // Generar tokens
       const accessToken = generateToken({ 
-        id: result.user.Id_Ejecutivo, 
+        Id_Ejecutivo: result.user.Id_Ejecutivo, 
         username: userLogin,
         role: result.user.ticketData?.role || 'USER'
       });
       
       const refreshToken = generateRefreshToken({ 
-        id: result.user.Id_Ejecutivo 
+        Id_Ejecutivo: result.user.Id_Ejecutivo 
       });
       
       // Actualizar última sesión
@@ -69,7 +69,7 @@ export class AuthController {
   static async getProfile(req: Request, res: Response) {
     try {
       // El usuario ya está autenticado por el middleware
-      const userId = (req as any).user?.id;
+      const userId = (req as any).user?.Id_Ejecutivo;
       
       if (!userId) {
         return res.status(401).json({ error: 'Usuario no autenticado' });
@@ -95,7 +95,7 @@ export class AuthController {
   // ✅ Método changePassword - Cambiar contraseña
   static async changePassword(req: Request, res: Response) {
     try {
-      const userId = (req as any).user?.id;
+      const userId = (req as any).user?.Id_Ejecutivo;
       
       if (!userId) {
         return res.status(401).json({ error: 'Usuario no autenticado' });
@@ -209,7 +209,7 @@ export class AuthController {
   // ✅ Método updateProfile - Actualizar perfil
   static async updateProfile(req: Request, res: Response) {
     try {
-      const userId = (req as any).user?.id;
+      const userId = (req as any).user?.Id_Ejecutivo;
       
       if (!userId) {
         return res.status(401).json({ error: 'Usuario no autenticado' });
@@ -262,7 +262,7 @@ export class AuthController {
   // ✅ Método initializeUserTicketData - Inicializar datos de tickets para usuario
   static async initializeUserTicketData(req: Request, res: Response) {
     try {
-      const userId = (req as any).user?.id;
+      const userId = (req as any).user?.Id_Ejecutivo;
       
       if (!userId) {
         return res.status(401).json({ error: 'Usuario no autenticado' });
@@ -289,7 +289,7 @@ export class AuthController {
   // ✅ Método updateLastSession - Actualizar última sesión (puede ser automático)
   static async updateLastSession(req: Request, res: Response) {
     try {
-      const userId = (req as any).user?.id;
+      const userId = (req as any).user?.Id_Ejecutivo;
       
       if (!userId) {
         return res.status(401).json({ error: 'Usuario no autenticado' });

@@ -25,30 +25,59 @@ export interface AuthRequest extends Request {
 export const authenticateToken = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers['authorization'];
+    console.log('🔍 Auth - Header recibido:', authHeader ? `${authHeader.substring(0, 50)}...` : 'No header');
+    
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
     if (!token) {
+      console.log('❌ Auth - No se encontró token');
       return res.status(401).json({ 
         error: 'Token de acceso requerido',
         message: 'No se proporcionó token de autenticación'
       });
     }
 
+    console.log('🔍 Auth - Token recibido (primeros 50 chars):', token.substring(0, 50) + '...');
+    
     // Verificar y decodificar token
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default-secret') as any;
     
-    // Validar estructura básica del token
-    if (!decoded.Id_Ejecutivo || !decoded.role) {
+    console.log('🔍 Auth - Token decodificado:', JSON.stringify(decoded, null, 2));
+    
+    // IMPORTANTE: Validar que el token tenga Id_Ejecutivo
+    const userId = decoded.Id_Ejecutivo || decoded.id || decoded.userId || decoded.Id_Ejecutivo;
+    
+    console.log('🔍 Auth - userId extraído:', userId, 'de campos:', {
+      Id_Ejecutivo: decoded.Id_Ejecutivo,
+      id: decoded.id,
+      userId: decoded.userId,
+      Id_Ejecutivo: decoded.Id_Ejecutivo
+    });
+
+    if (!userId) {
+      console.log('❌ Auth - Token no contiene Id_Ejecutivo o id:', Object.keys(decoded));
       return res.status(403).json({ 
         error: 'Token inválido',
-        message: 'Token no contiene la información requerida'
+        message: 'Token no contiene la información de usuario requerida',
+        tokenFields: Object.keys(decoded)
       });
     }
 
+    // Validar estructura básica del token
+    if (!decoded.role) {
+      console.log('❌ Auth - Token no contiene role:', decoded);
+      return res.status(403).json({ 
+        error: 'Token inválido',
+        message: 'Token no contiene información de rol'
+      });
+    }
+
+    console.log('🔍 Auth - Buscando usuario en BD con Id_Ejecutivo:', userId);
+    
     // Obtener datos actualizados del usuario desde la BD
     const user = await prisma.usuarios.findUnique({
       where: { 
-        Id_Ejecutivo: decoded.Id_Ejecutivo
+        Id_Ejecutivo: userId  // Usar el userId extraído
       },
       include: {
         area: {
@@ -78,28 +107,40 @@ export const authenticateToken = async (req: AuthRequest, res: Response, next: N
 
     // Verificar que el usuario existe
     if (!user) {
+      console.log('❌ Auth - Usuario no encontrado en BD:', userId);
       return res.status(401).json({ 
         error: 'Usuario no encontrado',
-        message: 'El usuario asociado al token no existe'
+        message: 'El usuario asociado al token no existe en la base de datos',
+        userId: userId
       });
     }
 
     // Verificar que el usuario está activo (activo = 1)
     if (user.activo !== 1) {
+      console.log('❌ Auth - Usuario inactivo:', userId);
       return res.status(401).json({ 
         error: 'Usuario inactivo',
-        message: 'Tu cuenta está desactivada. Contacta al administrador.'
+        message: 'Tu cuenta está desactivada. Contacta al administrador.',
+        userId: userId
       });
     }
 
     // Obtener role de TK_user_ticket_data (o default 'USER')
     const userRole = user.ticketData?.role || 'USER';
 
+    console.log('✅ Auth - Usuario encontrado:', {
+      Id_Ejecutivo: user.Id_Ejecutivo,
+      Login: user.Login,
+      Nombre: user.Nombre,
+      role: userRole
+    });
+
     // Actualizar última sesión del usuario (de manera asíncrona, no bloqueante)
     updateLastSession(user.Id_Ejecutivo).catch(error => {
       console.error('Error actualizando última sesión:', error);
     });
 
+    // Asignar user al request
     req.user = {
       Id_Ejecutivo: user.Id_Ejecutivo,
       Login: user.Login,
@@ -124,13 +165,10 @@ export const authenticateToken = async (req: AuthRequest, res: Response, next: N
       userArea: user.area?.nombre_area || 'Sin área'
     };
 
-    console.log('🔐 Auth - Usuario autenticado:', {
-      Id_Ejecutivo: user.Id_Ejecutivo,
-      Login: user.Login,
-      Nombre: user.Nombre,
-      role: userRole,
-      areaId: user.id_area,
-      areaNombre: user.area?.nombre_area,
+    console.log('🔐 Auth - Usuario autenticado y asignado a req.user:', {
+      Id_Ejecutivo: req.user.Id_Ejecutivo,
+      Login: req.user.Login,
+      role: req.user.role,
       timestamp: new Date().toISOString(),
       endpoint: req.originalUrl,
       method: req.method
@@ -138,11 +176,16 @@ export const authenticateToken = async (req: AuthRequest, res: Response, next: N
 
     next();
   } catch (error) {
-    console.error('❌ Error de autenticación:', {
-      error: error instanceof Error ? error.message : 'Error desconocido',
+    console.error('❌ Error completo de autenticación:', {
+      error: error instanceof Error ? {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      } : 'Error desconocido',
       timestamp: new Date().toISOString(),
       endpoint: req.originalUrl,
-      method: req.method
+      method: req.method,
+      headers: req.headers
     });
     
     if (error instanceof jwt.TokenExpiredError) {
@@ -161,7 +204,8 @@ export const authenticateToken = async (req: AuthRequest, res: Response, next: N
     
     return res.status(403).json({ 
       error: 'Error de autenticación',
-      message: 'No se pudo verificar tu identidad.'
+      message: 'No se pudo verificar tu identidad.',
+      details: error instanceof Error ? error.message : 'Error desconocido'
     });
   }
 };
@@ -173,6 +217,7 @@ async function updateLastSession(userId: number): Promise<void> {
       where: { Id_Ejecutivo: userId },
       data: { ultima_sesion: new Date() }
     });
+    console.log(`✅ Última sesión actualizada para usuario ${userId}`);
   } catch (error) {
     // No lanzar error, solo loggear
     console.error(`Error actualizando última sesión para usuario ${userId}:`, error);
@@ -182,11 +227,18 @@ async function updateLastSession(userId: number): Promise<void> {
 export const requireRole = (roles: string[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
+      console.log('❌ requireRole - No req.user encontrado');
       return res.status(401).json({ 
         error: 'No autenticado',
         message: 'Se requiere autenticación para acceder a este recurso'
       });
     }
+
+    console.log('🔍 requireRole - Verificando roles:', {
+      userId: req.user.Id_Ejecutivo,
+      userRole: req.user.role,
+      requiredRoles: roles
+    });
 
     // Verificar si el usuario tiene uno de los roles requeridos
     if (!roles.includes(req.user.role)) {
@@ -206,7 +258,7 @@ export const requireRole = (roles: string[]) => {
       });
     }
 
-    console.log('✅ Permisos de rol verificados:', {
+    console.log('✅ requireRole - Permisos de rol verificados:', {
       userId: req.user.Id_Ejecutivo,
       userRole: req.user.role,
       requiredRoles: roles,
@@ -441,6 +493,16 @@ export const requestLogger = (req: AuthRequest, res: Response, next: NextFunctio
     return originalSend.call(this, body);
   };
   
+  next();
+};
+
+// Middleware de debugging temporal
+export const debugAuth = (req: AuthRequest, res: Response, next: NextFunction) => {
+  console.log('=== DEBUG AUTH ===');
+  console.log('Headers:', req.headers);
+  console.log('URL:', req.originalUrl);
+  console.log('Method:', req.method);
+  console.log('=== END DEBUG ===');
   next();
 };
 

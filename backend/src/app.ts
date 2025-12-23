@@ -7,6 +7,11 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import { PrismaClient } from '@prisma/client';
 import routes from './routes';
+import { config } from 'dotenv';
+import path from 'path';
+
+// Cargar .env desde la raíz del proyecto
+config({ path: path.resolve(process.cwd(), '.env') });
 
 // Inicializar Express
 const app = express();
