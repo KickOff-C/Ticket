@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { metricsService, DashboardMetrics, TrendData } from '../services/metricsService';
+import { metricsService, DashboardMetrics } from '../services/metricsService';
 import { useAuth } from '../contexts/AuthContext';
 import './MetricsDashboard.css';
 
 const MetricsDashboard: React.FC = () => {
   const { user } = useAuth();
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
-  const [trendData, setTrendData] = useState<TrendData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -17,13 +16,9 @@ const MetricsDashboard: React.FC = () => {
   const loadMetrics = async () => {
     try {
       setLoading(true);
-      const [metricsData, trendData] = await Promise.all([
-        metricsService.getDashboardMetrics(),
-        metricsService.getTicketsTrend(7) // Últimos 7 días
-      ]);
-      
+      const metricsData = await metricsService.getDashboardMetrics();
+
       setMetrics(metricsData);
-      setTrendData(trendData);
     } catch (err: any) {
       setError('Error al cargar las métricas');
       console.error('Error loading metrics:', err);

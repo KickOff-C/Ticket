@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import './Login.css';
+import './login.css';
 
 const Login: React.FC = () => {
-  const [identifier, setIdentifier] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -15,7 +15,7 @@ const Login: React.FC = () => {
     setLoading(true);
 
     try {
-      await login({ identifier, password });
+      await login({ username, password });
     } catch (err: any) {
       setError(err.response?.data?.error || 'Error al iniciar sesión');
     } finally {
@@ -33,12 +33,12 @@ const Login: React.FC = () => {
           {error && <div className="error-message">{error}</div>}
           
           <div className="form-group">
-            <label htmlFor="identifier">Usuario o Email</label>
+            <label htmlFor="username">Usuario</label>
             <input
               type="text"
-              id="identifier"
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
+              id="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               required
               disabled={loading}
             />

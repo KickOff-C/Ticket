@@ -1,21 +1,21 @@
 export interface User {
   id: number;
-  email: string;
-  username: string;
-  name: string;
-  role: string;
-  areaId: number;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  email?: string;
+  username?: string;
+  name?: string;
+  role?: string;
+  areaId?: number | null;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
   area?: Area;
 }
 
 export interface Area {
   id: number;
   name: string;
-  managerId?: number;
-  createdAt: string;
+  managerId?: number | null;
+  createdAt?: string;
 }
 
 export interface Ticket {
@@ -90,10 +90,11 @@ export interface AddCommentData {
 export interface AuthResponse {
   user: User;
   token: string;
+  refreshToken?: string;
 }
 
 export interface LoginData {
-  identifier: string;
+  username: string;
   password: string;
 }
 

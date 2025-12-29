@@ -29,6 +29,12 @@ const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [assignLoading, setAssignLoading] = useState(false);
+  const getTicketArea = (ticketValue: Ticket | TicketTI | null) => {
+    if (ticketValue && 'area' in ticketValue && ticketValue.area && typeof ticketValue.area !== 'string') {
+      return ticketValue.area;
+    }
+    return null;
+  };
 
   useEffect(() => {
     if (ticket) {
@@ -71,17 +77,17 @@ const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
 
       console.log('🔍 DEBUG - Ticket actual:', currentTicket);
       
-      // CORREGIDO: Lógica mejorada para cargar usuarios según tipo de ticket
       if (isTITicket) {
         console.log('🎯 Cargando usuarios para asignación TI...');
         const tiUsers = await userService.getUsersForTIAssignment();
         console.log('✅ Usuarios TI encontrados:', tiUsers);
         setUsers(tiUsers);
       } else {
-        // Para tickets normales, cargar usuarios del área del ticket
-        if ('area' in currentTicket && currentTicket.area) {
-          console.log('🎯 Cargando usuarios para área:', currentTicket.area.id, currentTicket.area.name);
-          const areaUsers = await userService.getUsersByArea(currentTicket.area.id);
+        const ticketArea = getTicketArea(currentTicket);
+
+        if (ticketArea) {
+          console.log('🎯 Cargando usuarios para área:', ticketArea.id, ticketArea.name);
+          const areaUsers = await userService.getUsersByArea(ticketArea.id);
           console.log('✅ Usuarios encontrados:', areaUsers);
           
           // Filtrar usuarios (excluir managers y superadmins para asignación)
@@ -358,12 +364,15 @@ const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                   <span>{'creator' in currentTicket ? currentTicket.creator.name : 'Usuario'}</span>
                 </div>
                 
-                {'area' in currentTicket && currentTicket.area && (
-                  <div className="detail-item">
-                    <label>Área:</label>
-                    <span>{currentTicket.area.name}</span>
-                  </div>
-                )}
+                {(() => {
+                  const ticketArea = getTicketArea(currentTicket);
+                  return ticketArea ? (
+                    <div className="detail-item">
+                      <label>Área:</label>
+                      <span>{ticketArea.name}</span>
+                    </div>
+                  ) : null;
+                })()}
 
                 <div className="detail-item">
                   <label>Fecha creación:</label>
@@ -584,16 +593,16 @@ const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                   </div>
                 ) : (
                   users.map(userItem => (
-                    <div 
-                      key={userItem.id} 
-                      className={`user-item ${userItem.id === currentTicket.assignedToId ? 'selected' : ''}`}
-                      onClick={() => !assignLoading && handleAssignToUser(userItem.id)}
-                    >
-                      <div className="user-avatar">
-                        {userItem.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="user-info">
-                        <strong>{userItem.name}</strong>
+                    <div
+                    key={userItem.id}
+                    className={`user-item ${userItem.id === currentTicket.assignedToId ? 'selected' : ''}`}
+                    onClick={() => !assignLoading && handleAssignToUser(userItem.id)}
+                  >
+                    <div className="user-avatar">
+                        {userItem.name ? userItem.name.charAt(0).toUpperCase() : '?'}
+                    </div>
+                    <div className="user-info">
+                      <strong>{userItem.name}</strong>
                         <span>{userItem.email} • {userItem.role} {userItem.area && `• ${userItem.area.name}`}</span>
                       </div>
                       {assignLoading && (
