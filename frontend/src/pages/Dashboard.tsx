@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Ticket, TicketTI } from '../types';
+import { Ticket, TicketTI, Area } from '../types';
 import { ticketService } from '../services/ticketService';
 import { ticketTIService } from '../services/ticketTIService';
 import TicketCard from '../components/TicketCard';
@@ -15,7 +15,7 @@ import './Dashboard.css';
 // Tipos para los filtros
 type PriorityFilter = 'TODAS' | 'URGENTE' | 'ALTA' | 'MEDIA' | 'BAJA';
 type StatusFilter = 'TODOS' | 'ABIERTO' | 'EN_PROGRESO' | 'CERRADO';
-type AreaFilter = 'TODAS' | string; // string será el ID del área
+type AreaFilter = 'TODAS' | number;
 
 interface FiltersState {
   priority: PriorityFilter;
@@ -38,7 +38,7 @@ const Dashboard: React.FC = () => {
   const [transferTicket, setTransferTicket] = useState<Ticket | null>(null);
   const [activeSection, setActiveSection] = useState<'general' | 'ti' | 'metrics'>('general');
   const [error, setError] = useState('');
-  const [areas, setAreas] = useState<Array<{ id: string; name: string }>>([]);
+  const [areas, setAreas] = useState<Array<{ id: number; name: string }>>([]);
   
   // Estados para filtros
   const [showFilters, setShowFilters] = useState(false);
@@ -65,8 +65,6 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     loadTickets();
-    // En un caso real, cargarías las áreas desde tu API
-    // loadAreas();
   }, []);
 
   useEffect(() => {
@@ -81,6 +79,17 @@ const Dashboard: React.FC = () => {
       const response = await ticketService.getTickets();
       setTickets(response.tickets);
       setTicketsMetadata(response.metadata);
+
+      const uniqueAreas = Array.from(
+        new Map(
+          response.tickets
+            .map(ticket => ticket.area)
+            .filter((area): area is Area => Boolean(area) && typeof area !== 'string')
+            .map(area => [area.id, area.name])
+        )
+      ).map(([id, name]) => ({ id, name }));
+
+      setAreas(uniqueAreas);
     } catch (error: any) {
       console.error('Error loading tickets:', error);
       setError('Error al cargar tickets generales');
@@ -101,26 +110,6 @@ const Dashboard: React.FC = () => {
       setError('Error al cargar tickets TI');
     } finally {
       setTiLoading(false);
-    }
-  };
-
-  // Función para cargar áreas (ejemplo)
-  const loadAreas = async () => {
-    try {
-      // Aquí iría tu llamada a la API para obtener las áreas
-      // const areasData = await areaService.getAreas();
-      // setAreas(areasData);
-      
-      // Datos de ejemplo
-      const exampleAreas = [
-        { id: '1', name: 'Ventas' },
-        { id: '2', name: 'Soporte' },
-        { id: '3', name: 'Desarrollo' },
-        { id: '4', name: 'TI' },
-      ];
-      setAreas(exampleAreas);
-    } catch (error) {
-      console.error('Error loading areas:', error);
     }
   };
 
@@ -249,7 +238,7 @@ const Dashboard: React.FC = () => {
   };
 
   // Función para aplicar filtros
-  const applyFilters = (tickets: Ticket[] | TicketTI[]) => {
+  const applyFilters = (tickets: Array<Ticket | TicketTI>) => {
     return tickets.filter(ticket => {
       // Filtro por prioridad
       if (filters.priority !== 'TODAS' && ticket.priority !== filters.priority) {
@@ -262,9 +251,9 @@ const Dashboard: React.FC = () => {
       }
       
       // Filtro por área (solo para tickets generales)
-      if (activeSection === 'general' && filters.area !== 'TODAS') {
+      if (activeSection === 'general' && typeof filters.area === 'number') {
         const areaTicket = ticket as Ticket;
-        if (areaTicket.area?.id !== filters.area) {
+        if (!areaTicket.area || areaTicket.area.id !== filters.area) {
           return false;
         }
       }
@@ -276,11 +265,7 @@ const Dashboard: React.FC = () => {
   const canManageTransfers = user?.role === 'MANAGER' || user?.role === 'ADMIN' || user?.role === 'SUPERADMIN';
   const isTIUser = user?.area?.name === 'TI' || user?.role === 'SUPERADMIN';
 
-  const currentMetadata = activeSection === 'general' ? ticketsMetadata : 
-                         activeSection === 'ti' ? tiTicketsMetadata : 
-                         { total: 0, closed: 0, showingClosed: false, hasClosedTickets: false };
-
-  const currentTickets = activeSection === 'general' ? tickets : 
+  const currentTickets = activeSection === 'general' ? tickets :
                         activeSection === 'ti' ? tiTickets : [];
 
   const currentLoading = activeSection === 'general' ? loading : 

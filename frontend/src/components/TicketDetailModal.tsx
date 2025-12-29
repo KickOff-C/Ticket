@@ -30,6 +30,20 @@ const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
   const [users, setUsers] = useState<User[]>([]);
   const [assignLoading, setAssignLoading] = useState(false);
 
+  const getTicketArea = (ticketValue: Ticket | TicketTI | null) => {
+    if (ticketValue && 'area' in ticketValue && ticketValue.area && typeof ticketValue.area !== 'string') {
+      return ticketValue.area;
+    }
+    return null;
+  };
+
+  const displayTitle = (currentTicket as Ticket)?.motivo || currentTicket?.title || '';
+  const displayDescription = (currentTicket as Ticket)?.comentario || currentTicket?.description || '';
+  const displayEstado = (currentTicket as Ticket)?.estado || currentTicket?.status || '';
+  const displayPrioridad = (currentTicket as Ticket)?.prioridad || currentTicket?.priority || '';
+  const displayAsignadoTexto = (currentTicket as Ticket)?.asignadoA;
+  const displayFechaInicio = (currentTicket as Ticket)?.fechaInicio;
+
   useEffect(() => {
     if (ticket) {
       setCurrentTicket(ticket);
@@ -71,17 +85,17 @@ const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
 
       console.log('🔍 DEBUG - Ticket actual:', currentTicket);
       
-      // CORREGIDO: Lógica mejorada para cargar usuarios según tipo de ticket
       if (isTITicket) {
         console.log('🎯 Cargando usuarios para asignación TI...');
         const tiUsers = await userService.getUsersForTIAssignment();
         console.log('✅ Usuarios TI encontrados:', tiUsers);
         setUsers(tiUsers);
       } else {
-        // Para tickets normales, cargar usuarios del área del ticket
-        if ('area' in currentTicket && currentTicket.area) {
-          console.log('🎯 Cargando usuarios para área:', currentTicket.area.id, currentTicket.area.name);
-          const areaUsers = await userService.getUsersByArea(currentTicket.area.id);
+        const ticketArea = getTicketArea(currentTicket);
+
+        if (ticketArea) {
+          console.log('🎯 Cargando usuarios para área:', ticketArea.id, ticketArea.name);
+          const areaUsers = await userService.getUsersByArea(ticketArea.id);
           console.log('✅ Usuarios encontrados:', areaUsers);
           
           // Filtrar usuarios (excluir managers y superadmins para asignación)
@@ -304,14 +318,14 @@ const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
           <div className="modal-title">
             <h2>
               {isTITicket ? '🖥️ ' : '🎫 '}
-              {currentTicket.title}
+              {displayTitle}
             </h2>
             <div className="ticket-meta">
-              <span className={`status-badge status-${currentTicket.status.toLowerCase()}`}>
-                {currentTicket.status}
+              <span className={`status-badge status-${displayEstado.toLowerCase()}`}>
+                {displayEstado}
               </span>
-              <span className={`priority-badge priority-${currentTicket.priority.toLowerCase()}`}>
-                {currentTicket.priority}
+              <span className={`priority-badge priority-${displayPrioridad.toLowerCase()}`}>
+                {displayPrioridad}
               </span>
               {isTITicket && <span className="type-badge">TI</span>}
             </div>
@@ -348,32 +362,70 @@ const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
           {activeTab === 'details' && (
             <div className="details-content">
               <div className="detail-section">
-                <h3>Descripción</h3>
-                <p className="description">{currentTicket.description}</p>
+                <h3>Comentario</h3>
+                <p className="description">{displayDescription}</p>
               </div>
 
               <div className="detail-grid">
+                {(currentTicket as Ticket).entrada && (
+                  <div className="detail-item">
+                    <label>Entrada:</label>
+                    <span>{(currentTicket as Ticket).entrada}</span>
+                  </div>
+                )}
+
+                {(currentTicket as Ticket).ejecutiva && (
+                  <div className="detail-item">
+                    <label>Ejecutiva:</label>
+                    <span>{(currentTicket as Ticket).ejecutiva}</span>
+                  </div>
+                )}
+
                 <div className="detail-item">
                   <label>Creado por:</label>
                   <span>{'creator' in currentTicket ? currentTicket.creator.name : 'Usuario'}</span>
                 </div>
                 
-                {'area' in currentTicket && currentTicket.area && (
-                  <div className="detail-item">
-                    <label>Área:</label>
-                    <span>{currentTicket.area.name}</span>
-                  </div>
-                )}
+                {(() => {
+                  const ticketArea = getTicketArea(currentTicket);
+                  return ticketArea ? (
+                    <div className="detail-item">
+                      <label>Área:</label>
+                      <span>{ticketArea.name}</span>
+                    </div>
+                  ) : null;
+                })()}
 
                 <div className="detail-item">
                   <label>Fecha creación:</label>
                   <span>{new Date(currentTicket.createdAt).toLocaleString()}</span>
                 </div>
 
+                {displayFechaInicio && (
+                  <div className="detail-item">
+                    <label>Fecha inicio:</label>
+                    <span>{new Date(displayFechaInicio as string).toLocaleString()}</span>
+                  </div>
+                )}
+
                 <div className="detail-item">
                   <label>Última actividad:</label>
                   <span>{new Date(currentTicket.lastActivityAt).toLocaleString()}</span>
                 </div>
+
+                {(currentTicket as Ticket).estado && (
+                  <div className="detail-item">
+                    <label>Estado:</label>
+                    <span>{displayEstado}</span>
+                  </div>
+                )}
+
+                {(currentTicket as Ticket).prioridad && (
+                  <div className="detail-item">
+                    <label>Prioridad:</label>
+                    <span>{displayPrioridad}</span>
+                  </div>
+                )}
 
                 {currentTicket.assignedTo ? (
                   <div className="detail-item">
@@ -387,10 +439,45 @@ const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                   </div>
                 )}
 
+                {displayAsignadoTexto && (
+                  <div className="detail-item">
+                    <label>Asignado a (texto):</label>
+                    <span>{displayAsignadoTexto}</span>
+                  </div>
+                )}
+
                 {currentTicket.closedAt && (
                   <div className="detail-item">
                     <label>Cerrado en:</label>
                     <span>{new Date(currentTicket.closedAt).toLocaleString()}</span>
+                  </div>
+                )}
+
+                {(currentTicket as Ticket).parcela && (
+                  <div className="detail-item">
+                    <label>Parcela:</label>
+                    <span>{(currentTicket as Ticket).parcela}</span>
+                  </div>
+                )}
+
+                {(currentTicket as Ticket).proyecto && (
+                  <div className="detail-item">
+                    <label>Proyecto:</label>
+                    <span>{(currentTicket as Ticket).proyecto}</span>
+                  </div>
+                )}
+
+                {(currentTicket as Ticket).propietario && (
+                  <div className="detail-item">
+                    <label>Propietario:</label>
+                    <span>{(currentTicket as Ticket).propietario}</span>
+                  </div>
+                )}
+
+                {(currentTicket as Ticket).motivo && (
+                  <div className="detail-item">
+                    <label>Motivo:</label>
+                    <span>{(currentTicket as Ticket).motivo}</span>
                   </div>
                 )}
               </div>
@@ -584,16 +671,16 @@ const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
                   </div>
                 ) : (
                   users.map(userItem => (
-                    <div 
-                      key={userItem.id} 
-                      className={`user-item ${userItem.id === currentTicket.assignedToId ? 'selected' : ''}`}
-                      onClick={() => !assignLoading && handleAssignToUser(userItem.id)}
-                    >
-                      <div className="user-avatar">
-                        {userItem.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="user-info">
-                        <strong>{userItem.name}</strong>
+                  <div
+                    key={userItem.id}
+                    className={`user-item ${userItem.id === currentTicket.assignedToId ? 'selected' : ''}`}
+                    onClick={() => !assignLoading && handleAssignToUser(userItem.id)}
+                  >
+                    <div className="user-avatar">
+                        {userItem.name ? userItem.name.charAt(0).toUpperCase() : '?'}
+                    </div>
+                    <div className="user-info">
+                      <strong>{userItem.name}</strong>
                         <span>{userItem.email} • {userItem.role} {userItem.area && `• ${userItem.area.name}`}</span>
                       </div>
                       {assignLoading && (

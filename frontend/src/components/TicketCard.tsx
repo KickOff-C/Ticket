@@ -63,9 +63,19 @@ const TicketCard: React.FC<TicketCardProps> = ({
 
   // Para tickets TI, el área siempre es "TI"
   const areaName = isTITicket ? 'TI' : (ticket as Ticket).area?.name;
+  const displayTitle = (ticket as Ticket).motivo || ticket.title;
+  const displayDescription = (ticket as Ticket).comentario || ticket.description;
+  const displayOwner = (ticket as Ticket).propietario || ticket.creator?.name;
+  const displayProject = (ticket as Ticket).proyecto;
+  const displayParcela = (ticket as Ticket).parcela;
+  const displayEntrada = (ticket as Ticket).entrada;
+  const displayEjecutiva = (ticket as Ticket).ejecutiva;
+  const displayPrioridad = (ticket as Ticket).prioridad || ticket.priority;
+  const displayEstado = (ticket as Ticket).estado || ticket.status;
+  const displayFechaInicio = (ticket as Ticket).fechaInicio;
 
   return (
-    <div 
+    <div
       className={`ticket-card ${isTITicket ? 'ti-ticket' : ''}`}
       onClick={() => onClick(ticket)}
       style={{ 
@@ -78,20 +88,37 @@ const TicketCard: React.FC<TicketCardProps> = ({
           {isTITicket ? '🖥️ TI' : '🎫 GENERAL'}
         </div>
         <div className="ticket-status">
-          <span className={`status status-${ticket.status.toLowerCase()}`}>
-            {getStatusIcon(ticket.status)} {ticket.status}
+          <span className={`status status-${displayEstado.toLowerCase()}`}>
+            {getStatusIcon(displayEstado)} {displayEstado}
           </span>
         </div>
       </div>
 
       {/* Título y descripción */}
       <div className="ticket-content">
-        <h3 className="ticket-title">{ticket.title}</h3>
-        <p className="ticket-description">{ticket.description}</p>
+        <h3 className="ticket-title">{displayTitle}</h3>
+        <p className="ticket-description">{displayDescription}</p>
       </div>
 
       {/* Información principal en grid */}
       <div className="ticket-info-main">
+        {(displayEntrada || displayEjecutiva) && (
+          <div className="info-row">
+            {displayEntrada && (
+              <div className="info-group">
+                <span className="info-label">ENTRADA</span>
+                <span className="info-value">{displayEntrada}</span>
+              </div>
+            )}
+            {displayEjecutiva && (
+              <div className="info-group">
+                <span className="info-label">EJECUTIVA</span>
+                <span className="info-value">{displayEjecutiva}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="info-row">
           <div className="info-group">
             <span className="info-label">CREADO POR</span>
@@ -107,7 +134,7 @@ const TicketCard: React.FC<TicketCardProps> = ({
           <div className="info-group">
             <span className="info-label">ASIGNADO A</span>
             <span className="info-value assigned-to">
-              {ticket.assignedTo ? ticket.assignedTo.name : 'Sin asignar'}
+              {(ticket as Ticket).asignadoA || ticket.assignedTo?.name || 'Sin asignar'}
             </span>
           </div>
           <div className="info-group">
@@ -115,6 +142,15 @@ const TicketCard: React.FC<TicketCardProps> = ({
             <span className="info-value">{formatDate(ticket.createdAt)}</span>
           </div>
         </div>
+
+        {displayFechaInicio && (
+          <div className="info-row">
+            <div className="info-group">
+              <span className="info-label">FECHA INICIO</span>
+              <span className="info-value">{formatDate(displayFechaInicio)}</span>
+            </div>
+          </div>
+        )}
 
         <div className="info-row">
           <div className="info-group">
@@ -128,13 +164,34 @@ const TicketCard: React.FC<TicketCardProps> = ({
             </span>
           </div>
         </div>
+
+        <div className="info-row">
+          {displayOwner && (
+            <div className="info-group">
+              <span className="info-label">PROPIETARIO</span>
+              <span className="info-value">{displayOwner}</span>
+            </div>
+          )}
+          {displayProject && (
+            <div className="info-group">
+              <span className="info-label">PROYECTO</span>
+              <span className="info-value">{displayProject}</span>
+            </div>
+          )}
+          {displayParcela && (
+            <div className="info-group">
+              <span className="info-label">PARCELA</span>
+              <span className="info-value">{displayParcela}</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Footer con prioridad y acciones */}
       <div className="ticket-footer">
         <div className="priority-section">
-          <span className={`priority priority-${ticket.priority.toLowerCase()}`}>
-            {getPriorityIcon(ticket.priority)} {ticket.priority}
+          <span className={`priority priority-${displayPrioridad.toLowerCase()}`}>
+            {getPriorityIcon(displayPrioridad)} {displayPrioridad}
           </span>
         </div>
         

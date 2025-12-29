@@ -82,8 +82,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(null);
       
       // Validaciones básicas del frontend
-      if (!credentials.identifier?.trim() || !credentials.password) {
-        throw new Error('Usuario/email y contraseña son requeridos');
+      if (!credentials.username?.trim() || !credentials.password) {
+        throw new Error('Usuario y contraseña son requeridos');
       }
 
       const response = await authService.login(credentials);
@@ -94,7 +94,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       setUser(response.user);
-      localStorage.setItem('token', response.token);
+      if (response.token) {
+        localStorage.setItem('token', response.token);
+      }
+      if (response.refreshToken) {
+        localStorage.setItem('refreshToken', response.refreshToken);
+      }
       localStorage.setItem('user', JSON.stringify(response.user));
       
     } catch (error: any) {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
+import { mapTransferFromBackend } from '../services/mappers';
 import './TransfersPanel.css';
 
 interface Transfer {
@@ -74,7 +75,7 @@ const TransfersPanel: React.FC<TransfersPanelProps> = ({ onClose, onUpdate }) =>
     try {
       const response = await api.get('/transfers/pending');
       console.log('✅ Respuesta del backend:', response.data);
-      setTransfers(response.data);
+      setTransfers(response.data.map(mapTransferFromBackend));
     } catch (err: any) {
       console.error('❌ Error completo:', err); // ← AGREGAR ESTO
     console.error('❌ Response error:', err.response); // ← AGREGAR ESTO

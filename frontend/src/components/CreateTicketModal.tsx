@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User } from '../types';
+import { User, CreateTicketData } from '../types';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import './CreateTicketModal.css';
@@ -9,19 +9,21 @@ interface CreateTicketModalProps {
   onSubmit: (data: any) => Promise<void>;
 }
 
-interface CreateTicketData {
-  title: string;
-  description: string;
-  priority: string;
-  assignedToId?: number;
-}
-
 const CreateTicketModal: React.FC<CreateTicketModalProps> = ({ onClose, onSubmit }) => {
   const [formData, setFormData] = useState<CreateTicketData>({
-    title: '',
-    description: '',
-    priority: 'MEDIA',
-    assignedToId: undefined
+    entrada: '',
+    ejecutiva: '',
+    prioridad: 'MEDIA',
+    estado: 'ABIERTO',
+    area: '',
+    parcela: '',
+    proyecto: '',
+    propietario: '',
+    motivo: '',
+    comentario: '',
+    asignadoA: '',
+    assignedToId: undefined,
+    fechaInicio: new Date().toISOString()
   });
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
@@ -32,6 +34,12 @@ const CreateTicketModal: React.FC<CreateTicketModalProps> = ({ onClose, onSubmit
   useEffect(() => {
     loadUsers();
   }, []);
+
+  useEffect(() => {
+    if (currentUser?.name) {
+      setFormData(prev => ({ ...prev, ejecutiva: prev.ejecutiva || currentUser.name || '' }));
+    }
+  }, [currentUser]);
 
   const loadUsers = async () => {
     try {
@@ -52,14 +60,17 @@ const CreateTicketModal: React.FC<CreateTicketModalProps> = ({ onClose, onSubmit
     setError('');
     setLoading(true);
 
-    if (!formData.title.trim() || !formData.description.trim()) {
-      setError('Título y descripción son requeridos');
+    if (!formData.motivo.trim() || !formData.comentario.trim()) {
+      setError('Motivo y comentario son requeridos');
       setLoading(false);
       return;
     }
 
     try {
-      await onSubmit(formData);
+      await onSubmit({
+        ...formData,
+        fechaInicio: formData.fechaInicio ?? new Date().toISOString(),
+      });
     } catch (err: any) {
       setError(err.response?.data?.error || 'Error al crear el ticket');
     } finally {
@@ -88,41 +99,41 @@ const CreateTicketModal: React.FC<CreateTicketModalProps> = ({ onClose, onSubmit
         <form onSubmit={handleSubmit} className="ticket-form">
           {error && <div className="error-message">{error}</div>}
 
-          <div className="form-group">
-            <label htmlFor="title">Título *</label>
-            <input
-              type="text"
-              id="title"
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
-              required
-              maxLength={100}
-              placeholder="Resumen breve del problema..."
-            />
-            <div className="character-count">{formData.title.length}/100</div>
-          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="entrada">Entrada *</label>
+              <input
+                type="text"
+                id="entrada"
+                name="entrada"
+                value={formData.entrada}
+                onChange={handleChange}
+                required
+                placeholder="Número o referencia de entrada"
+              />
+            </div>
 
-          <div className="form-group">
-            <label htmlFor="description">Descripción *</label>
-            <textarea
-              id="description"
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              required
-              rows={5}
-              placeholder="Describe detalladamente el problema o solicitud..."
-            />
+            <div className="form-group">
+              <label htmlFor="ejecutiva">Ejecutiva *</label>
+              <input
+                type="text"
+                id="ejecutiva"
+                name="ejecutiva"
+                value={formData.ejecutiva}
+                onChange={handleChange}
+                required
+                placeholder="Nombre de la ejecutiva"
+              />
+            </div>
           </div>
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="priority">Prioridad</label>
+              <label htmlFor="prioridad">Prioridad</label>
               <select
-                id="priority"
-                name="priority"
-                value={formData.priority}
+                id="prioridad"
+                name="prioridad"
+                value={formData.prioridad}
                 onChange={handleChange}
               >
                 <option value="BAJA">Baja</option>
@@ -132,9 +143,133 @@ const CreateTicketModal: React.FC<CreateTicketModalProps> = ({ onClose, onSubmit
               </select>
             </div>
 
+            <div className="form-group">
+              <label htmlFor="estado">Estado</label>
+              <select
+                id="estado"
+                name="estado"
+                value={formData.estado}
+                onChange={handleChange}
+              >
+                <option value="ABIERTO">Abierto</option>
+                <option value="EN_PROGRESO">En progreso</option>
+                <option value="CERRADO">Cerrado</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="fechaInicio">Fecha Inicio</label>
+              <input
+                type="datetime-local"
+                id="fechaInicio"
+                name="fechaInicio"
+                value={formData.fechaInicio?.slice(0, 16)}
+                onChange={handleChange}
+                disabled
+              />
+              <div className="help-text">Se establece automáticamente al crear</div>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="area">Área</label>
+              <input
+                type="text"
+                id="area"
+                name="area"
+                value={formData.area}
+                onChange={handleChange}
+                placeholder="Área responsable"
+              />
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="parcela">Parcela</label>
+              <input
+                type="text"
+                id="parcela"
+                name="parcela"
+                value={formData.parcela}
+                onChange={handleChange}
+                placeholder="Identificador de parcela"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="proyecto">Proyecto</label>
+              <input
+                type="text"
+                id="proyecto"
+                name="proyecto"
+                value={formData.proyecto}
+                onChange={handleChange}
+                placeholder="Proyecto asociado"
+              />
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="propietario">Propietario</label>
+              <input
+                type="text"
+                id="propietario"
+                name="propietario"
+                value={formData.propietario}
+                onChange={handleChange}
+                placeholder="Nombre del propietario"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="motivo">Motivo *</label>
+              <input
+                type="text"
+                id="motivo"
+                name="motivo"
+                value={formData.motivo}
+                onChange={handleChange}
+                required
+                maxLength={150}
+                placeholder="Razón principal del ticket"
+              />
+              <div className="character-count">{formData.motivo.length}/150</div>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="comentario">Comentario *</label>
+            <textarea
+              id="comentario"
+              name="comentario"
+              value={formData.comentario}
+              onChange={handleChange}
+              required
+              rows={4}
+              placeholder="Detalle o comentario del ticket"
+            />
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="asignadoA">Asignado a (texto)</label>
+              <input
+                type="text"
+                id="asignadoA"
+                name="asignadoA"
+                value={formData.asignadoA ?? ''}
+                onChange={handleChange}
+                placeholder="Nombre o usuario asignado"
+              />
+              <div className="help-text">Se enviará junto a la asignación por lista si corresponde</div>
+            </div>
+
             {canAssignTickets && (
               <div className="form-group">
-                <label htmlFor="assignedToId">Asignar a</label>
+                <label htmlFor="assignedToId">Asignado a (usuarios del área)</label>
                 <select
                   id="assignedToId"
                   name="assignedToId"
@@ -153,7 +288,7 @@ const CreateTicketModal: React.FC<CreateTicketModalProps> = ({ onClose, onSubmit
                   <div className="help-text">Cargando usuarios...</div>
                 )}
                 <div className="help-text">
-                  Solo managers y admins pueden asignar tickets
+                  Solo managers y admins pueden asignar tickets desde la lista
                 </div>
               </div>
             )}
