@@ -11,6 +11,34 @@ export interface User {
   area?: Area;
 }
 
+export interface Parcela {
+  id_parcela: number;
+  codigo_parcela: string;
+  nombre_legal: string;
+  proyecto: string;
+  sector?: string;
+  seleccionable: number;
+  existe: number;
+  propietarios?: Propietario[];
+}
+
+export interface Propietario {
+  id: number;
+  nombre: string;
+  rut: string;
+  parcela?: string;
+  tipo_deudor?: string;
+  mail?: string;
+  fono?: string;
+  direccion?: string;
+  comuna?: string;
+  parcelaRel?: {
+    id_parcela: number;
+    codigo_parcela: string;
+    nombre_legal: string;
+    proyecto: string;
+  };
+}
 export interface Area {
   id: number;
   name: string;

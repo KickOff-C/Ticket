@@ -10,6 +10,7 @@ import TicketDetailModal from '../components/TicketDetailModal';
 import TransferModal from '../components/TransferModal';
 import TransfersPanel from '../components/TransfersPanel';
 import MetricsDashboard from '../components/MetricsDashboard';
+import ChangePasswordModal from '../components/ChangePasswordModal';
 import './Dashboard.css';
 
 // Tipos para los filtros
@@ -33,6 +34,7 @@ const Dashboard: React.FC = () => {
   const [showCreateTIModal, setShowCreateTIModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showTransfersPanel, setShowTransfersPanel] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [selectedTITicket, setSelectedTITicket] = useState<TicketTI | null>(null);
   const [transferTicket, setTransferTicket] = useState<Ticket | null>(null);
@@ -112,24 +114,41 @@ const Dashboard: React.FC = () => {
     }
   };
 
-
   const handleCreateTicket = async (ticketData: any) => {
     try {
-      setError('');
-      const newTicket = await ticketService.createTicket(ticketData);
-      setTickets(prev => [newTicket, ...prev]);
-      setShowCreateModal(false);
-      
-      setTicketsMetadata(prev => ({
-        ...prev,
-        total: prev.total + 1
-      }));
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.error || 'Error al crear ticket';
-      setError(errorMessage);
-      throw error;
-    }
-  };
+    setError('');
+    
+    // Asegurarse de que todos los campos están en el formato correcto
+    const formattedData = {
+      ...ticketData,
+      // Convertir IDs a números si están definidos
+      assignedToId: ticketData.assignedToId ? Number(ticketData.assignedToId) : undefined,
+      parcelaId: ticketData.parcelaId ? Number(ticketData.parcelaId) : undefined,
+      propietarioId: ticketData.propietarioId ? Number(ticketData.propietarioId) : undefined,
+      // Asegurar que los campos opcionales estén presentes
+      entrada: ticketData.entrada || undefined,
+      motivo: ticketData.motivo || undefined,
+      // El backend espera priority con mayúsculas
+      priority: ticketData.priority || 'MEDIA'
+    };
+
+    console.log('Enviando datos al backend:', formattedData); // Para debugging
+    
+    const newTicket = await ticketService.createTicket(formattedData);
+    setTickets(prev => [newTicket, ...prev]);
+    setShowCreateModal(false);
+    
+    setTicketsMetadata(prev => ({
+      ...prev,
+      total: prev.total + 1
+    }));
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.error || 'Error al crear ticket';
+    console.error('Error al crear ticket:', error.response?.data || error);
+    setError(errorMessage);
+    throw error;
+  }
+};
 
   const handleCreateTicketTI = async (ticketData: any) => {
     try {
@@ -340,7 +359,7 @@ const Dashboard: React.FC = () => {
       <div className="filters-section">
         <div className="filters-header" onClick={() => setShowFilters(!showFilters)}>
           <div className="filters-title">
-            <span className="filters-icon">🎯</span>
+            <span className="filters-icon"></span>
             <span>Filtros</span>
             {hasActiveFilters && <span className="active-filters-badge">Activos</span>}
           </div>
@@ -472,7 +491,7 @@ const Dashboard: React.FC = () => {
     return (
       <div className="active-filters-info">
         <div className="active-filters-header">
-          <span className="active-filters-icon">🎯</span>
+          <span className="active-filters-icon"></span>
           <span>Filtros aplicados:</span>
         </div>
         <div className="active-filters-list">
@@ -685,17 +704,89 @@ const Dashboard: React.FC = () => {
           </div>
           
           <div className="header-actions">
-            {canManageTransfers && activeSection !== 'metrics' && (
-              <button 
-                onClick={() => setShowTransfersPanel(true)}
-                className="btn btn-secondary"
-              >
-                🔄 Transferencias
-              </button>
-            )}
-            <button onClick={handleLogout} className="btn btn-danger">
-              🚪 Cerrar Sesión
-            </button>
+            {/* Menú desplegable de usuario */}
+            <div className="user-menu-container">
+              <div className="user-menu">
+                <button className="user-menu-btn">
+                  <span className="user-avatar">
+                    {user?.name?.charAt(0) || 'U'}
+                  </span>
+                  <span className="user-name">{user?.name}</span>
+                  <span className="menu-chevron">▼</span>
+                </button>
+                
+                <div className="user-menu-dropdown">
+                  <div className="user-menu-header">
+                    <div className="user-info-dropdown">
+                      <span className="user-avatar-large">
+                        {user?.name?.charAt(0) || 'U'}
+                      </span>
+                      <div className="user-details">
+                        <span className="user-name-dropdown">{user?.name}</span>
+                        <span className="user-role-dropdown">{user?.role}</span>
+                        <span className="user-area-dropdown">{user?.area?.name}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="user-menu-items">
+                    <button 
+                      className="menu-item"
+                      onClick={() => {
+                        setShowChangePasswordModal(true);
+                      }}
+                    >
+                      <span className="menu-item-icon">🔒</span>
+                      <span className="menu-item-text">Cambiar Contraseña</span>
+                    </button>
+                                      
+                    <button 
+                      className="menu-item"
+                      onClick={() => {
+                        // Puedes agregar más opciones aquí
+                        console.log('Ver perfil');
+                      }}
+                    >
+                      <span className="menu-item-icon">👤</span>
+                      <span className="menu-item-text">Mi Perfil</span>
+                    </button>
+                    
+                    <div className="menu-divider"></div>
+                    
+                    {canManageTransfers && activeSection !== 'metrics' && (
+                      <button 
+                        className="menu-item"
+                        onClick={() => setShowTransfersPanel(true)}
+                      >
+                        <span className="menu-item-icon">🔄</span>
+                        <span className="menu-item-text">Transferencias</span>
+                      </button>
+                    )}
+                    
+                    <button 
+                      className="menu-item"
+                      onClick={() => {
+                        // Opcional: Configuración
+                        console.log('Configuración');
+                      }}
+                    >
+                      <span className="menu-item-icon">⚙️</span>
+                      <span className="menu-item-text">Configuración</span>
+                    </button>
+                    
+                    <div className="menu-divider"></div>
+                    
+                    <button 
+                      className="menu-item logout-item"
+                      onClick={handleLogout}
+                    >
+                      <span className="menu-item-icon">🚪</span>
+                      <span className="menu-item-text">Cerrar Sesión</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -779,6 +870,15 @@ const Dashboard: React.FC = () => {
         <TransfersPanel
           onClose={() => setShowTransfersPanel(false)}
           onUpdate={loadTickets}
+        />
+      )}
+
+      {showChangePasswordModal && (
+        <ChangePasswordModal
+          onClose={() => setShowChangePasswordModal(false)}
+          onSuccess={() => {
+            console.log('Contraseña cambiada exitosamente');
+          }}
         />
       )}
     </div>

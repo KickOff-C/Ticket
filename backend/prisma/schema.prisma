@@ -1,4 +1,3 @@
-// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,176 +8,3617 @@ datasource db {
 }
 
 model usuarios {
-  // Campos originales (exactamente como están en tu tabla)
-  Id_Ejecutivo            Int        @id @default(autoincrement()) @map("Id_Ejecutivo")
-  Nombre                  String?    @map("Nombre")
-  RUT                     String?    @map("RUT")
-  Login                   String?    @unique @map("Login")
-  password                String?    @map("password")
-  login_sw                String?    @map("login_sw")
-  Correo                  String?    @map("Correo")
-  Anexo                   String?    @map("Anexo")
-  Supervisor              Int?       @map("Supervisor")
-  activo                  Int?       @map("activo")
-  puede_agendar           Int?       @map("puede_agendar")
-  id_cargo                Int?       @map("id_cargo")
-  atiende_visitas         Int?       @map("atiende_visitas")
-  tiene_personal_a_cargo  Int?       @map("tiene_personal_a_cargo")
-  fecha_ingreso           DateTime?  @map("fecha_ingreso") @db.Date
-  ultima_sesion           DateTime?  @map("ultima_sesion")
-  fecha_nacimiento        DateTime?  @map("fecha_nacimiento") @db.Date
-  sexo                    Int?       @map("sexo")
-  telefono                Int?       @map("telefono")
-  fecha_desactivado       DateTime?  @map("fecha_desactivado") @db.Date
-  software                String?    @map("software")
-  pantalla_bienvenida     String?    @map("pantalla_bienvenida")
-  id_area                 Int?       @map("id_area")
-  
-  // Relación con área
-  area                    area?      @relation(fields: [id_area], references: [id_area])
-  
-  // Relación con datos de tickets
-  ticketData              TK_user_ticket_data?
-  
-  // Relaciones inversas
-  supervisorRel           usuarios?  @relation("SupervisorRelation", fields: [Supervisor], references: [Id_Ejecutivo])
-  subordinates            usuarios[] @relation("SupervisorRelation")
-  
-  // Relaciones con tickets - CON NOMBRES EXPLÍCITOS
-  createdTickets          TK_tickets[]           @relation("TicketCreator")
-  assignedTickets         TK_tickets[]           @relation("TicketAssigned")
-  createdTicketsTI        TK_tickets_ti[]        @relation("TicketTICreator")
-  assignedTicketsTI       TK_tickets_ti[]        @relation("TicketTIAssigned")
-  comments                TK_comments[]
-  requestedTransfers      TK_transfer_requests[] @relation("TransferRequestedBy")
-  approvedTransfers       TK_transfer_requests[] @relation("TransferApprovedBy")
-  managedArea             area?                  @relation("AreaManager")
-  ticketHistory           TK_ticket_history[]
-  
+  Id_Ejecutivo                                                 Int                        @id @default(autoincrement()) @map("Id_Ejecutivo")
+  Nombre                                                       String?                    @map("Nombre") @db.VarChar(255)
+  RUT                                                          String?                    @map("RUT") @db.VarChar(255)
+  Login                                                        String?                    @unique(map: "Login") @map("Login") @db.VarChar(8)
+  password                                                     String?                    @map("password") @db.VarChar(255)
+  login_sw                                                     String?                    @map("login_sw") @db.VarChar(10)
+  Correo                                                       String?                    @map("Correo") @db.VarChar(100)
+  Anexo                                                        String?                    @map("Anexo") @db.VarChar(50)
+  Supervisor                                                   Int?                       @map("Supervisor")
+  activo                                                       Int?                       @map("activo")
+  puede_agendar                                                Int?                       @map("puede_agendar")
+  id_cargo                                                     Int?                       @map("id_cargo")
+  atiende_visitas                                              Int?                       @map("atiende_visitas")
+  tiene_personal_a_cargo                                       Int?                       @map("tiene_personal_a_cargo")
+  fecha_ingreso                                                DateTime?                  @map("fecha_ingreso") @db.Date
+  ultima_sesion                                                DateTime?                  @map("ultima_sesion") @db.DateTime(0)
+  fecha_nacimiento                                             DateTime?                  @map("fecha_nacimiento") @db.Date
+  sexo                                                         Int?                       @map("sexo")
+  telefono                                                     Int?                       @map("telefono")
+  fecha_desactivado                                            DateTime?                  @map("fecha_desactivado") @db.Date
+  software                                                     String?                    @map("software") @db.VarChar(20)
+  pantalla_bienvenida                                          String?                    @map("pantalla_bienvenida") @db.VarChar(255)
+  id_area                                                      Int?                       @map("id_area")
+  password_tk                                                  String                     @map("password_tk") @db.Char(64)
+  comments                                                     TK_comments[]
+  ticketHistory                                                TK_ticket_history[]
+  createdTickets                                               TK_tickets[]               @relation("TicketCreator")
+  assignedTickets                                              TK_tickets[]               @relation("TicketAssigned")
+  createdTicketsTI                                             TK_tickets_ti[]            @relation("TicketTICreator")
+  assignedTicketsTI                                            TK_tickets_ti[]            @relation("TicketTIAssigned")
+  requestedTransfers                                           TK_transfer_requests[]     @relation("TransferRequestedBy")
+  approvedTransfers                                            TK_transfer_requests[]     @relation("TransferApprovedBy")
+  ticketData                                                   TK_user_ticket_data?
+  managedArea                                                  area?                      @relation("AreaManager")
+  cob_asignacion_proyectos                                     cob_asignacion_proyectos[] @ignore
+  gestiones                                                    gestiones[]
+  la_documentos_agua                                           la_documentos_agua[]
+  ra_asistencia                                                ra_asistencia[]
+  sco_carta_oferta_sco_carta_oferta_vendedorTousuarios         sco_carta_oferta[]         @relation("sco_carta_oferta_vendedorTousuarios")
+  sco_carta_oferta_sco_carta_oferta_jefe_proy_iTousuarios      sco_carta_oferta[]         @relation("sco_carta_oferta_jefe_proy_iTousuarios")
+  sco_carta_oferta_sco_carta_oferta_agente_callTousuarios      sco_carta_oferta[]         @relation("sco_carta_oferta_agente_callTousuarios")
+  sco_carta_oferta_sco_carta_oferta_guiaTousuarios             sco_carta_oferta[]         @relation("sco_carta_oferta_guiaTousuarios")
+  sco_carta_oferta_sco_carta_oferta_cerradorTousuarios         sco_carta_oferta[]         @relation("sco_carta_oferta_cerradorTousuarios")
+  sco_carta_oferta_sco_carta_oferta_gerente_vTousuarios        sco_carta_oferta[]         @relation("sco_carta_oferta_gerente_vTousuarios")
+  sco_carta_oferta_sco_carta_oferta_confirmador_callTousuarios sco_carta_oferta[]         @relation("sco_carta_oferta_confirmador_callTousuarios")
+  sco_carta_oferta_sco_carta_oferta_super_callTousuarios       sco_carta_oferta[]         @relation("sco_carta_oferta_super_callTousuarios")
+  sco_pagos_co                                                 sco_pagos_co[]
+  sys_acceso_softwares                                         sys_acceso_softwares[]
+  sys_permisos_sw                                              sys_permisos_sw[]
+  area                                                         area?                      @relation(fields: [id_area], references: [id_area], map: "fk_usuario_area")
+  cargos                                                       cargos?                    @relation(fields: [id_cargo], references: [id_cargo], map: "usuarios_ibfk_1")
+  supervisorRel                                                usuarios?                  @relation("SupervisorRelation", fields: [Supervisor], references: [Id_Ejecutivo], map: "usuarios_ibfk_2")
+  subordinates                                                 usuarios[]                 @relation("SupervisorRelation")
+
+  @@index([Supervisor], map: "Supervisor")
+  @@index([id_cargo], map: "ejecutivos_ibfk_1")
+  @@index([id_area], map: "fk_usuario_area")
+  @@index([Nombre(length: 191)], map: "idx_nombre")
+  @@index([sexo], map: "sexo")
   @@map("usuarios")
 }
 
 model TK_user_ticket_data {
-  userId        Int      @id @map("userId")
-  user          usuarios @relation(fields: [userId], references: [Id_Ejecutivo])
-  role          String   @default("USER")
-  ticketsClosed Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
+  userId        Int       @id @map("userId")
+  role          String?   @default("USER") @db.VarChar(20)
+  ticketsClosed Int?      @default(0)
+  createdAt     DateTime? @default(now()) @db.DateTime(0)
+  updatedAt     DateTime? @default(now()) @updatedAt @db.DateTime(0)
+  user          usuarios  @relation(fields: [userId], references: [Id_Ejecutivo], onDelete: Cascade, onUpdate: NoAction, map: "tk_user_ticket_data_ibfk_1")
+
+  @@index([createdAt], map: "TK_idx_created_at")
+  @@index([role], map: "TK_idx_role")
   @@map("TK_user_ticket_data")
 }
 
 model area {
-  id_area          Int        @id @default(autoincrement()) @map("id_area")
-  nombre_area      String     @map("nombre_area")
-  TK_managerId     Int?       @unique @map("TK_managerId")
-  TK_createdAt     DateTime?  @default(now()) @map("TK_createdAt")
-  
-  manager          usuarios?  @relation("AreaManager", fields: [TK_managerId], references: [Id_Ejecutivo])
-  users            usuarios[]
-  tickets          TK_tickets[]
-  transfersFrom    TK_transfer_requests[] @relation("TransferFrom")
-  transfersTo      TK_transfer_requests[] @relation("TransferTo")
-  
+  id_area       Int                    @id @default(autoincrement()) @map("id_area")
+  nombre_area   String                 @map("nombre_area") @db.VarChar(100)
+  TK_managerId  Int?                   @unique(map: "TK_unique_manager") @map("TK_managerId")
+  TK_createdAt  DateTime?              @default(now()) @map("TK_createdAt") @db.DateTime(0)
+  tickets       TK_tickets[]
+  transfersFrom TK_transfer_requests[] @relation("TransferFrom")
+  transfersTo   TK_transfer_requests[] @relation("TransferTo")
+  manager       usuarios?              @relation("AreaManager", fields: [TK_managerId], references: [Id_Ejecutivo], map: "TK_fk_area_manager")
+  users         usuarios[]
+
   @@map("area")
 }
 
 model TK_tickets {
-  id              Int        @id @default(autoincrement())
-  title           String
-  description     String     @db.Text
-  status          String?    @default("ABIERTO")
-  priority        String?    @default("MEDIA")
-  createdAt       DateTime?  @default(now())
-  updatedAt       DateTime?  @updatedAt
-  lastActivityAt  DateTime?  @default(now())
-  closedAt        DateTime?
-  
-  creatorId       Int
-  creator         usuarios   @relation("TicketCreator", fields: [creatorId], references: [Id_Ejecutivo])
-  
-  assignedToId    Int?
-  assignedTo      usuarios?  @relation("TicketAssigned", fields: [assignedToId], references: [Id_Ejecutivo])
-  
-  areaId          Int
-  area            area       @relation(fields: [areaId], references: [id_area])
-  
-  comments        TK_comments[]
-  transfers       TK_transfer_requests[]
-  history         TK_ticket_history[]
-  
+  id             Int                    @id @default(autoincrement())
+  title          String                 @db.VarChar(255)
+  description    String                 @db.Text
+  status         String?                @default("ABIERTO") @db.VarChar(50)
+  priority       String?                @default("MEDIA") @db.VarChar(50)
+  createdAt      DateTime?              @default(now()) @db.DateTime(0)
+  updatedAt      DateTime?              @default(now()) @updatedAt @db.DateTime(0)
+  lastActivityAt DateTime?              @default(now()) @db.DateTime(0)
+  closedAt       DateTime?              @db.DateTime(0)
+  creatorId      Int
+  assignedToId   Int?
+  areaId         Int
+  entrada        TK_tickets_entrada?
+  motivo         TK_tickets_motivo?
+  parcelaId      Int?
+  propietarioId  Int?
+  comments       TK_comments[]
+  history        TK_ticket_history[]
+  parcela        sys_parcelas?          @relation(fields: [parcelaId], references: [id_parcela], map: "fk_ticket_parcela")
+  propietario    deudores?              @relation(fields: [propietarioId], references: [id], map: "fk_ticket_propietario")
+  creator        usuarios               @relation("TicketCreator", fields: [creatorId], references: [Id_Ejecutivo], onUpdate: NoAction, map: "tk_tickets_ibfk_1")
+  assignedTo     usuarios?              @relation("TicketAssigned", fields: [assignedToId], references: [Id_Ejecutivo], onUpdate: NoAction, map: "tk_tickets_ibfk_2")
+  area           area                   @relation(fields: [areaId], references: [id_area], onUpdate: NoAction, map: "tk_tickets_ibfk_3")
+  transfers      TK_transfer_requests[]
+
+  @@index([areaId], map: "TK_idx_area")
+  @@index([assignedToId], map: "TK_idx_assigned")
+  @@index([createdAt], map: "TK_idx_created_at")
+  @@index([creatorId], map: "TK_idx_creator")
+  @@index([entrada], map: "TK_idx_entrada")
+  @@index([lastActivityAt], map: "TK_idx_last_activity")
+  @@index([motivo], map: "TK_idx_motivo")
+  @@index([parcelaId], map: "TK_idx_parcela")
+  @@index([priority], map: "TK_idx_priority")
+  @@index([propietarioId], map: "TK_idx_propietario")
+  @@index([status], map: "TK_idx_status")
   @@map("TK_tickets")
 }
 
 model TK_tickets_ti {
-  id              Int        @id @default(autoincrement())
-  title           String
-  description     String     @db.Text
-  status          String?    @default("ABIERTO")
-  priority        String?    @default("MEDIA")
-  createdAt       DateTime?  @default(now())
-  updatedAt       DateTime?  @updatedAt
-  lastActivityAt  DateTime?  @default(now())
-  closedAt        DateTime?
-  
-  creatorId       Int
-  creator         usuarios   @relation("TicketTICreator", fields: [creatorId], references: [Id_Ejecutivo])
-  
-  assignedToId    Int?
-  assignedTo      usuarios?  @relation("TicketTIAssigned", fields: [assignedToId], references: [Id_Ejecutivo])
-  
-  area            String?    @default("TI")
-  
-  comments        TK_comments[]
-  
+  id             Int           @id @default(autoincrement())
+  title          String        @db.VarChar(255)
+  description    String        @db.Text
+  status         String?       @default("ABIERTO") @db.VarChar(50)
+  priority       String?       @default("MEDIA") @db.VarChar(50)
+  createdAt      DateTime?     @default(now()) @db.DateTime(0)
+  updatedAt      DateTime?     @default(now()) @updatedAt @db.DateTime(0)
+  lastActivityAt DateTime?     @default(now()) @db.DateTime(0)
+  closedAt       DateTime?     @db.DateTime(0)
+  creatorId      Int
+  assignedToId   Int?
+  area           String?       @default("TI") @db.VarChar(50)
+  comments       TK_comments[]
+  creator        usuarios      @relation("TicketTICreator", fields: [creatorId], references: [Id_Ejecutivo], onUpdate: NoAction, map: "tk_tickets_ti_ibfk_1")
+  assignedTo     usuarios?     @relation("TicketTIAssigned", fields: [assignedToId], references: [Id_Ejecutivo], onUpdate: NoAction, map: "tk_tickets_ti_ibfk_2")
+
+  @@index([assignedToId], map: "TK_idx_assigned_ti")
+  @@index([createdAt], map: "TK_idx_created_at_ti")
+  @@index([creatorId], map: "TK_idx_creator_ti")
+  @@index([lastActivityAt], map: "TK_idx_last_activity_ti")
+  @@index([priority], map: "TK_idx_priority_ti")
+  @@index([status], map: "TK_idx_status_ti")
   @@map("TK_tickets_ti")
 }
 
 model TK_comments {
-  id        Int        @id @default(autoincrement())
-  content   String     @db.Text
-  createdAt DateTime?  @default(now())
-  userId    Int
-  user      usuarios   @relation(fields: [userId], references: [Id_Ejecutivo])
-  ticketId  Int?
-  ticket    TK_tickets?   @relation(fields: [ticketId], references: [id])
+  id         Int            @id @default(autoincrement())
+  content    String         @db.Text
+  createdAt  DateTime?      @default(now()) @db.DateTime(0)
+  userId     Int
+  ticketId   Int?
   ticketTIId Int?
-  ticketTI  TK_tickets_ti? @relation(fields: [ticketTIId], references: [id])
-  
+  user       usuarios       @relation(fields: [userId], references: [Id_Ejecutivo], onDelete: Cascade, onUpdate: NoAction, map: "tk_comments_ibfk_1")
+  ticket     TK_tickets?    @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "tk_comments_ibfk_2")
+  ticketTI   TK_tickets_ti? @relation(fields: [ticketTIId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "tk_comments_ibfk_3")
+
+  @@index([createdAt], map: "TK_idx_created_at_comment")
+  @@index([ticketId], map: "TK_idx_ticket_comment")
+  @@index([ticketTIId], map: "TK_idx_ticket_ti_comment")
+  @@index([userId], map: "TK_idx_user_comment")
   @@map("TK_comments")
 }
 
 model TK_transfer_requests {
   id            Int        @id @default(autoincrement())
   ticketId      Int
-  ticket        TK_tickets    @relation(fields: [ticketId], references: [id])
   fromAreaId    Int
-  fromArea      area       @relation("TransferFrom", fields: [fromAreaId], references: [id_area])
   toAreaId      Int
-  toArea        area       @relation("TransferTo", fields: [toAreaId], references: [id_area])
   requestedById Int
-  requestedBy   usuarios   @relation("TransferRequestedBy", fields: [requestedById], references: [Id_Ejecutivo])
-  status        String?    @default("PENDIENTE")
+  status        String?    @default("PENDIENTE") @db.VarChar(50)
   approvedById  Int?
-  approvedBy    usuarios?  @relation("TransferApprovedBy", fields: [approvedById], references: [Id_Ejecutivo])
-  createdAt     DateTime?  @default(now())
-  updatedAt     DateTime?  @updatedAt
-  
+  createdAt     DateTime?  @default(now()) @db.DateTime(0)
+  updatedAt     DateTime?  @default(now()) @updatedAt @db.DateTime(0)
+  ticket        TK_tickets @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "tk_transfer_requests_ibfk_1")
+  fromArea      area       @relation("TransferFrom", fields: [fromAreaId], references: [id_area], onUpdate: NoAction, map: "tk_transfer_requests_ibfk_2")
+  toArea        area       @relation("TransferTo", fields: [toAreaId], references: [id_area], onUpdate: NoAction, map: "tk_transfer_requests_ibfk_3")
+  requestedBy   usuarios   @relation("TransferRequestedBy", fields: [requestedById], references: [Id_Ejecutivo], onUpdate: NoAction, map: "tk_transfer_requests_ibfk_4")
+  approvedBy    usuarios?  @relation("TransferApprovedBy", fields: [approvedById], references: [Id_Ejecutivo], onUpdate: NoAction, map: "tk_transfer_requests_ibfk_5")
+
+  @@index([approvedById], map: "TK_idx_approved_by")
+  @@index([createdAt], map: "TK_idx_created_at_transfer")
+  @@index([fromAreaId], map: "TK_idx_from_area")
+  @@index([requestedById], map: "TK_idx_requested_by")
+  @@index([status], map: "TK_idx_status_transfer")
+  @@index([ticketId], map: "TK_idx_ticket_transfer")
+  @@index([toAreaId], map: "TK_idx_to_area")
   @@map("TK_transfer_requests")
 }
 
 model TK_ticket_history {
   id        Int        @id @default(autoincrement())
   ticketId  Int
-  ticket    TK_tickets    @relation(fields: [ticketId], references: [id])
-  action    String
+  action    String     @db.VarChar(100)
   oldValue  String?    @db.Text
   newValue  String?    @db.Text
   details   String?    @db.Text
   userId    Int
-  user      usuarios   @relation(fields: [userId], references: [Id_Ejecutivo])
-  createdAt DateTime?  @default(now())
-  
+  createdAt DateTime?  @default(now()) @db.DateTime(0)
+  ticket    TK_tickets @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "tk_ticket_history_ibfk_1")
+  user      usuarios   @relation(fields: [userId], references: [Id_Ejecutivo], onUpdate: NoAction, map: "tk_ticket_history_ibfk_2")
+
+  @@index([action], map: "TK_idx_action_history")
+  @@index([createdAt], map: "TK_idx_created_at_history")
+  @@index([ticketId], map: "TK_idx_ticket_history")
+  @@index([userId], map: "TK_idx_user_history")
   @@map("TK_ticket_history")
+}
+
+model sys_parcelas {
+  id_parcela               Int                       @id @default(autoincrement()) @map("id_parcela")
+  codigo_parcela           String?                   @unique(map: "codigo_parcela") @map("codigo_parcela") @db.VarChar(255)
+  nombre_legal             String?                   @map("nombre_legal") @db.VarChar(255)
+  dominio                  String?                   @map("dominio") @db.VarChar(255)
+  proyecto                 String?                   @map("proyecto") @db.VarChar(255)
+  sector                   String?                   @map("sector") @db.VarChar(255)
+  rol                      String?                   @map("rol") @db.VarChar(255)
+  superficie_total         String?                   @map("superficie_total") @db.VarChar(255)
+  superficie_servidumbre   String?                   @map("superficie_servidumbre") @db.VarChar(255)
+  superficie_util          String?                   @map("superficie_util") @db.VarChar(255)
+  existe                   Int?                      @map("existe")
+  id_proyecto              Int?                      @map("id_proyecto")
+  revisada                 Int?                      @map("revisada") @db.TinyInt
+  precio_lista             Int?                      @map("precio_lista")
+  stock                    Int?                      @map("stock")
+  estado_general           Int?                      @map("estado_general")
+  seleccionable            Int?                      @default(1) @map("seleccionable")
+  tipo_parcela             Int?                      @map("tipo_parcela")
+  id_empresa_agua          Int?                      @map("id_empresa_agua")
+  co_num_parcela           String?                   @map("co_num_parcela") @db.VarChar(100)
+  tickets                  TK_tickets[]
+  la_documentos_agua       la_documentos_agua[]
+  pa_parcelas_servicios    pa_parcelas_servicios[]
+  sco_carta_oferta         sco_carta_oferta[]
+  sys_construcciones       sys_construcciones?
+  sys_estados_gral_parcela sys_estados_gral_parcela? @relation(fields: [estado_general], references: [id_estado_general], onDelete: Cascade, map: "sys_parcelas_ibfk_1")
+
+  @@index([estado_general], map: "estado_general")
+  @@map("sys_parcelas")
+}
+
+model deudores {
+  id            Int          @id @default(autoincrement())
+  parcela       String?      @map("parcela") @db.VarChar(50)
+  rut           String?      @map("rut") @db.VarChar(20)
+  nombre        String?      @map("nombre") @db.VarChar(100)
+  tipo_deudor   String?      @map("tipo_deudor") @db.VarChar(20)
+  activo        Int?         @map("activo")
+  fono          Int?         @map("fono")
+  mail          String?      @map("mail") @db.VarChar(100)
+  fecha_ingreso DateTime?    @map("fecha_ingreso") @db.DateTime(0)
+  ingresado_por Int?         @map("ingresado_por")
+  id_pagare     Int?         @map("id_pagare")
+  direccion     String?      @map("direccion") @db.VarChar(255)
+  comuna        Int?         @map("comuna")
+  tickets       TK_tickets[]
+  sys_comunas   sys_comunas? @relation(fields: [comuna], references: [Id_Comuna], map: "deudores_ibfk_1")
+  gestiones     gestiones[]
+
+  @@unique([parcela, nombre], map: "parcela")
+  @@index([activo], map: "activo")
+  @@index([comuna], map: "comuna")
+  @@index([parcela], map: "parcela_2")
+  @@index([tipo_deudor], map: "tipo_deudor")
+  @@map("deudores")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model co_antiguas {
+  parcela               String? @db.VarChar(255)
+  Valor_Parcela         String? @map("Valor Parcela") @db.VarChar(255)
+  Fecha_C_O_            String? @map("Fecha C.O.") @db.VarChar(255)
+  Forma_de_Pago         String? @map("Forma de Pago") @db.VarChar(255)
+  fecha_firma_cliente   String? @map("fecha firma cliente") @db.VarChar(255)
+  NOTARIA               String? @db.VarChar(255)
+  Datos_inscripci_n_CBR String? @map("Datos inscripción CBR") @db.VarChar(255)
+  F__CBR                String? @map("F. CBR") @db.VarChar(255)
+  Estado_comisi_n       String? @map("Estado comisión") @db.VarChar(255)
+  JP_inicio_CO          String? @map("JP inicio CO") @db.VarChar(255)
+  fecha_FMS             String? @map("fecha FMS") @db.VarChar(255)
+  fecha_form            String? @db.VarChar(255)
+  id_parcela            String? @db.VarChar(255)
+  id_pagare             String? @db.VarChar(255)
+
+  @@map("000_co_antiguas")
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model procesados_conta {
+  id_pago        Int?
+  N__Comprobante String? @map("N° Comprobante") @db.VarChar(255)
+
+  @@index([id_pago], map: "id_pago")
+  @@map("001_procesados_conta")
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model cobros_por_parcelas {
+  Proyecto                     String? @db.VarChar(255)
+  Parcela                      String? @db.VarChar(255)
+  Fecha_Vencimiento            String? @map("Fecha Vencimiento") @db.VarChar(255)
+  Fecha_de_Cobro_Pagar_        String? @map("Fecha de Cobro Pagaré") @db.VarChar(255)
+  N__de_Cuota                  String? @map("N° de Cuota") @db.VarChar(255)
+  GGCC_UF                      String? @map("GGCC UF") @db.VarChar(255)
+  ggcc___                      String? @map("ggcc $$") @db.VarChar(255)
+  Agua_UF                      String? @map("Agua UF") @db.VarChar(255)
+  Club_House_UF                String? @map("Club House UF") @db.VarChar(255)
+  Cr_dito_UF                   String? @map("Crédito UF") @db.VarChar(255)
+  Multas_y_rebajas_UF          String? @map("Multas y rebajas UF") @db.VarChar(255)
+  Subtotal_UF                  String? @map("Subtotal UF") @db.VarChar(255)
+  Agua__                       String? @map("Agua $") @db.VarChar(255)
+  Club_House__                 String? @map("Club House $") @db.VarChar(255)
+  Cr_dito__                    String? @map("Crédito $") @db.VarChar(255)
+  Multas_y_rebajas             String? @map("Multas y rebajas") @db.VarChar(255)
+  Total_sin_mora__             String? @map("Total sin mora $") @db.VarChar(255)
+  Multas_e_intereses_por_mora  String? @map("Multas e intereses por mora") @db.VarChar(255)
+  total_con_mora               String? @map("total con mora") @db.VarChar(255)
+  Comentarios_multas_y_rebajas String? @map("Comentarios multas y rebajas") @db.VarChar(255)
+  pagado                       String? @db.VarChar(255)
+  total_uf                     String? @db.VarChar(255)
+  pagare                       String? @db.VarChar(255)
+
+  @@map("002_cobros_por_parcelas")
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model datos_clientes {
+  Parcela     String? @db.VarChar(255)
+  Propietario String? @db.VarChar(255)
+  Rut         String? @db.VarChar(255)
+  Correo      String? @db.VarChar(255)
+  Tel_fono    String? @map("Teléfono") @db.VarChar(255)
+  pagare      String? @db.VarChar(255)
+
+  @@map("003_datos_clientes")
+  @@ignore
+}
+
+model Pagosparcelas {
+  Proyecto                     String? @db.VarChar(255)
+  Parcela                      String? @db.VarChar(255)
+  Fecha_Vencimiento            String? @map("Fecha Vencimiento") @db.VarChar(255)
+  Fecha_de_Cobro_Pagar_        String? @map("Fecha de Cobro Pagaré") @db.VarChar(255)
+  N__de_Cuota                  String? @map("N° de Cuota") @db.VarChar(255)
+  GGCC_UF                      String? @map("GGCC UF") @db.VarChar(255)
+  Agua_UF                      String? @map("Agua UF") @db.VarChar(255)
+  Club_House_UF                String? @map("Club House UF") @db.VarChar(255)
+  Cr_dito_UF                   String? @map("Crédito UF") @db.VarChar(255)
+  Multas_y_rebajas_UF          String? @map("Multas y rebajas UF") @db.VarChar(255)
+  Subtotal_UF                  String? @map("Subtotal UF") @db.VarChar(255)
+  GGCC__                       String? @map("GGCC $") @db.VarChar(255)
+  Agua__                       String? @map("Agua $") @db.VarChar(255)
+  Club_House__                 String? @map("Club House $") @db.VarChar(255)
+  Cr_dito__                    String? @map("Crédito $") @db.VarChar(255)
+  Multas_y_rebajas             String? @map("Multas y rebajas") @db.VarChar(255)
+  Total_sin_mora__             String? @map("Total sin mora $") @db.VarChar(255)
+  Multas_e_intereses_por_mora  String? @map("Multas e intereses por mora") @db.VarChar(255)
+  total_con_mora               String? @map("total con mora") @db.VarChar(255)
+  Comentarios_multas_y_rebajas String? @map("Comentarios multas y rebajas") @db.VarChar(255)
+  Valor_Pagado                 String? @map("Valor Pagado") @db.VarChar(255)
+  M_todo_de_pago               String? @map("Método de pago") @db.VarChar(255)
+  Fecha_de_pago                String? @map("Fecha de pago") @db.VarChar(255)
+  Banco_origen                 String? @map("Banco origen") @db.VarChar(255)
+  Banco_destino                String? @map("Banco destino") @db.VarChar(255)
+  idmediopago                  String? @db.VarChar(255)
+  id_bancoorigen               String? @db.VarChar(255)
+  id_bancodest                 String? @db.VarChar(255)
+  idpago                       Int     @id @default(autoincrement())
+}
+
+model abonos {
+  id_abono          Int
+  parcela           String    @id @unique(map: "parcela") @db.VarChar(20)
+  fecha_ingreso     DateTime? @db.DateTime(0)
+  monto_inicial     Int?
+  monto_actual      Int?
+  ult_actualizacion DateTime? @db.DateTime(0)
+
+  @@index([parcela], map: "parcela_2")
+}
+
+model acuerdos_pago {
+  id_acuerdo    Int        @id @default(autoincrement())
+  fecha_pago    DateTime?  @db.Date
+  id_gestion    Int?
+  monto_acuerdo Int?
+  fecha_termino DateTime?  @db.Date
+  n_cuotas      Int?
+  gestiones     gestiones? @relation(fields: [id_gestion], references: [id_gestion], onDelete: Cascade, map: "acuerdos_pago_ibfk_1")
+
+  @@index([id_gestion], map: "id_gestion")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model agua_historico {
+  C_digo_correcto String? @map("Código correcto") @db.VarChar(255)
+  medicion        String? @db.VarChar(255)
+  fecha           String? @db.VarChar(255)
+  consumo_mes     String? @db.VarChar(255)
+
+  @@ignore
+}
+
+model aircall_calls {
+  id                                     BigInt                   @id
+  sid                                    String?                  @db.VarChar(50)
+  direct_link                            String?                  @db.Text
+  direction                              aircall_calls_direction?
+  status                                 String?                  @db.VarChar(50)
+  missed_call_reason                     String?                  @db.VarChar(255)
+  started_at                             DateTime?                @db.Timestamp(0)
+  answered_at                            DateTime?                @db.Timestamp(0)
+  ended_at                               DateTime?                @db.Timestamp(0)
+  duration                               Int?
+  voicemail                              String?                  @db.Text
+  recording                              String?                  @db.Text
+  asset                                  String?                  @db.Text
+  raw_digits                             String?                  @db.VarChar(50)
+  user_id                                Int?
+  user_name                              String?                  @db.VarChar(255)
+  user_email                             String?                  @db.VarChar(255)
+  user_available                         Boolean?
+  user_availability_status               String?                  @db.VarChar(50)
+  user_time_zone                         String?                  @db.VarChar(50)
+  user_language                          String?                  @db.VarChar(10)
+  contact                                String?                  @db.Text
+  archived                               Boolean?
+  assigned_to                            String?                  @db.Text
+  transferred_by                         String?                  @db.Text
+  transferred_to                         String?                  @db.Text
+  cost                                   Decimal?                 @db.Decimal(10, 2)
+  number_id                              Int?
+  number_name                            String?                  @db.VarChar(255)
+  number_digits                          String?                  @db.VarChar(50)
+  number_country                         String?                  @db.VarChar(10)
+  number_time_zone                       String?                  @db.VarChar(50)
+  number_open                            Boolean?
+  number_availability_status             String?                  @db.VarChar(50)
+  number_is_ivr                          String?                  @db.VarChar(10)
+  number_live_recording_activated        Boolean?
+  first_comment_id                       Int?
+  first_comment_content                  String?                  @db.Text
+  first_comment_posted_at                DateTime?                @db.Timestamp(0)
+  first_comment_posted_by_id             Int?
+  first_comment_posted_by_name           String?                  @db.VarChar(255)
+  first_tag_id                           Int?
+  first_tag_name                         String?                  @db.VarChar(255)
+  first_team_id                          Int?
+  first_team_name                        String?                  @db.VarChar(255)
+  first_ivr_option_id                    String?                  @db.VarChar(50)
+  first_ivr_option_title                 String?                  @db.VarChar(255)
+  first_ivr_option_key                   String?                  @db.VarChar(10)
+  first_ivr_option_branch                String?                  @db.VarChar(50)
+  first_ivr_option_transition_started_at DateTime?                @db.Timestamp(0)
+  first_ivr_option_transition_ended_at   DateTime?                @db.Timestamp(0)
+  created_at                             DateTime?                @default(now()) @db.Timestamp(0)
+  updated_at                             DateTime?                @default(now()) @db.Timestamp(0)
+  summary_consulted                      Int?                     @default(0)
+  sentiment_consulted                    Int?                     @default(0)
+  topics_consulted                       Int?                     @default(0)
+}
+
+model aircall_users {
+  user_id          Int     @id
+  user_name        String? @db.VarChar(255)
+  asociated_number String? @db.VarChar(20)
+  user_type        String? @db.VarChar(30)
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model backup_cobranzas_base {
+  id_deuda                     Int       @default(0)
+  Valor_UF                     String?   @map("Valor UF") @db.VarChar(255)
+  Fecha_de_vencimiento         DateTime? @map("Fecha de vencimiento") @db.Date
+  fecha_pagare                 DateTime? @db.Date
+  Rut                          String?   @db.VarChar(255)
+  Propietario                  String?   @db.VarChar(255)
+  Parcela                      String?   @db.VarChar(255)
+  GGCC_UF                      String?   @map("GGCC UF") @db.VarChar(255)
+  GGCC__                       String?   @map("GGCC $") @db.VarChar(255)
+  Descuento_GGCC               String?   @map("Descuento GGCC") @db.VarChar(255)
+  GGCC_total                   String?   @map("GGCC total") @db.VarChar(255)
+  Cobro_ClubHouse              String?   @map("Cobro ClubHouse") @db.VarChar(255)
+  clubhouseUF                  Float?    @db.Float
+  Cobro_agua                   String?   @map("Cobro agua") @db.VarChar(255)
+  aguaUF                       Float?    @db.Float
+  Cobro_credito                String?   @map("Cobro credito") @db.VarChar(255)
+  creditoUF                    Float?    @db.Float
+  multas_y_rebajas             String?   @map("multas y rebajas") @db.VarChar(255)
+  multas_e_intereses_por__mora String?   @map("multas e intereses por  mora") @db.VarChar(255)
+  N__CUOTA                     String?   @map("Nº CUOTA") @db.VarChar(255)
+  Cuota_UF                     String?   @map("Cuota UF") @db.VarChar(255)
+  Cuota__                      String?   @map("Cuota $") @db.VarChar(255)
+  Total_a_pagar                String?   @map("Total a pagar") @db.VarChar(255)
+  Descuentos                   String?   @db.VarChar(255)
+  Total_a_pagar_formulas       String?   @map("Total a pagar formulas") @db.VarChar(255)
+  Diferencias                  String?   @db.VarChar(255)
+  Deuda                        Float?    @db.Float
+  deuda_uf                     Decimal?  @db.Decimal(14, 8)
+  interes_uf                   Decimal?  @db.Decimal(10, 2)
+  Deuda_si                     Float?    @db.Float
+  Correo                       String?   @db.VarChar(255)
+  Fecha_de_pago                String?   @map("Fecha de pago") @db.VarChar(255)
+  Valor_pagado                 String?   @map("Valor pagado") @db.VarChar(255)
+  M_todo_de_pago               String?   @map("Método de pago") @db.VarChar(255)
+  Banco_origen                 String?   @map("Banco origen") @db.VarChar(255)
+  Banco_destino                String?   @map("Banco destino") @db.VarChar(255)
+  Comentarios                  String?   @db.VarChar(255)
+  Estado_BD                    String?   @map("Estado BD") @db.VarChar(255)
+  RUT_BD                       String?   @map("RUT BD") @db.VarChar(255)
+  Nombre_BD                    String?   @map("Nombre BD") @db.VarChar(255)
+  Validador                    String?   @db.VarChar(255)
+  Fecha_Firma_cliente_BD       DateTime? @map("Fecha Firma cliente BD") @db.Date
+  Rut_2__propietario_2_        String?   @map("Rut 2 (propietario 2)") @db.VarChar(255)
+  Deuda_sin_pagar_             String?   @map("Deuda sin pagaré") @db.VarChar(255)
+  proyecto                     String?   @db.VarChar(255)
+  estado_cuota                 Int?
+  original_ci                  Int?
+  original_si                  Int?
+  original_uf                  Decimal?  @db.Decimal(14, 8)
+  estado_pagare                Int?
+  verificado_por               Int?
+  fecha_mod_pagare             DateTime? @db.DateTime(0)
+  id_pagare                    Int?
+  ordinal_cuota                Int?
+  fecha_ult_pago               DateTime? @db.Date
+
+  @@ignore
+}
+
+model bancos {
+  id_banco     Int     @id @default(autoincrement())
+  nombre_banco String? @db.VarChar(100)
+  cuenta_sl    String? @db.VarChar(50)
+  activos_or   Int?
+  activos_emp  Int?
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model base_contactos_prop {
+  parcela         String? @db.VarChar(255)
+  nombre_prop     String? @db.VarChar(255)
+  Rut             String? @db.VarChar(255)
+  Direccion       String? @db.VarChar(255)
+  complemento_dir String? @db.VarChar(255)
+  Comuna          String? @db.VarChar(255)
+  Regi_n          String? @map("Región") @db.VarChar(255)
+  E_mail          String? @map("E-mail") @db.VarChar(255)
+  fono            String? @db.VarChar(255)
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model base_mopazo {
+  NUMREG  String? @db.VarChar(255)
+  RUT     String? @db.VarChar(255)
+  NOMBRE  String? @db.VarChar(255)
+  Parcela String? @db.VarChar(255)
+  NOMBRE1 String? @db.VarChar(255)
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model base_nombres_cartolabanco {
+  Fecha String? @db.VarChar(255)
+  f2    String? @db.VarChar(255)
+  rut   String? @db.VarChar(255)
+  nom1  String? @db.VarChar(255)
+  nom2  String? @db.VarChar(255)
+  nom3  String? @db.VarChar(255)
+  nom4  String? @db.VarChar(255)
+  nom5  String? @db.VarChar(255)
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model bi_gestion_pagare {
+  fechahora     DateTime? @db.DateTime(0)
+  observaciones String?   @db.VarChar(1000)
+  id_pagare     Int?
+  Nombre        String?   @db.VarChar(255)
+  tipo_contacto String?   @db.VarChar(100)
+  respuesta     String?   @db.VarChar(50)
+  cant          BigInt    @default(0)
+
+  @@index([id_pagare], map: "idx_id")
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model bi_indicadores_mora {
+  mora_comercial          Decimal?  @db.Decimal(31, 2)
+  deuda_vencida_90d_3y    Decimal?  @db.Decimal(31, 2)
+  deuda_total_hasta_3y    Decimal?  @db.Decimal(31, 2)
+  cartera_comercial_total Decimal?  @db.Decimal(31, 2)
+  indicador_deuda_vencida Decimal?  @db.Decimal(41, 4)
+  indice_mora             Decimal?  @db.Decimal(41, 4)
+  fecha                   DateTime? @db.Date
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model carga_csv {
+  Proyecto            String? @db.VarChar(255)
+  NroDeParcela        String? @db.VarChar(255)
+  No_                 String? @map("No.") @db.VarChar(255)
+  Nombre              String? @db.VarChar(255)
+  RUT                 String? @db.VarChar(255)
+  FechadePago         String? @db.VarChar(255)
+  Fechavencimiento    String? @db.VarChar(255)
+  Nrodecuota          String? @db.VarChar(255)
+  Valorfinanciamiento String? @db.VarChar(255)
+  pagare              String? @db.VarChar(255)
+
+  @@ignore
+}
+
+model cargos {
+  id_cargo     Int        @id @default(autoincrement())
+  nombre_cargo String?    @db.VarChar(255)
+  nivel_vis    Int?
+  usuarios     usuarios[]
+}
+
+model cjud_cobranza_judicial {
+  id_cobranza_jud Int       @id @default(autoincrement())
+  rut_cliente     Int?
+  parcela_cobro   Int?
+  id_pagare       Int?
+  fecha_demanda   DateTime? @db.Date
+  fecha_creacion  DateTime? @db.DateTime(0)
+  creado_por      Int?
+  estado_actual   Int?
+  rol             String?   @db.VarChar(255)
+  juzgado         Int?
+  rut_abogado     Int?
+  motivo          String?   @db.VarChar(255)
+}
+
+model cjud_estados {
+  id_estado     Int     @id @default(autoincrement())
+  estado_cobjud String? @db.VarChar(255)
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model cob_asignacion_proyectos {
+  id_proyecto   Int?
+  id_usuario    Int?
+  fecha_act     DateTime?      @db.DateTime(0)
+  fecha_desac   DateTime?      @db.DateTime(0)
+  sys_proyectos sys_proyectos? @relation(fields: [id_proyecto], references: [id_proyecto], map: "cob_asignacion_proyectos_ibfk_1")
+  usuarios      usuarios?      @relation(fields: [id_usuario], references: [Id_Ejecutivo], map: "cob_asignacion_proyectos_ibfk_2")
+
+  @@index([id_proyecto], map: "id_proyecto")
+  @@index([id_usuario], map: "id_usuario")
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model cob_cierres_periodo {
+  id_deuda          Int       @default(0)
+  fecha_pagare      DateTime? @db.Date
+  num_cuota         String?   @db.VarChar(255)
+  estado_cuota      String?   @db.VarChar(40)
+  Comentarios       String?   @db.VarChar(255)
+  deuda_uf          Decimal?  @db.Decimal(14, 8)
+  credito_uf        Float?    @db.Float
+  original_uf       Decimal?  @db.Decimal(14, 8)
+  Parcela           String?   @db.VarChar(255)
+  proyecto          String?   @db.VarChar(255)
+  pagado_cuota      Decimal?  @db.Decimal(32, 0)
+  fecha_pago        DateTime? @db.Date
+  fecha_proceso     String?   @db.VarChar(10)
+  Rut               String?   @db.VarChar(255)
+  Propietario       String?   @db.VarChar(255)
+  Correo            String?   @db.VarChar(255)
+  estado_pagare     String?   @db.VarChar(50)
+  periodo           String?   @db.VarChar(7)
+  fecha_creacion    DateTime  @db.DateTime(0)
+  tipo_contrato     String?   @db.VarChar(30)
+  sociedad          String?   @db.VarChar(255)
+  ejecutivo         String?   @db.VarChar(100)
+  contador_parcela  Int?
+  dias_mora         Int?
+  deuda_clp         Int?
+  deuda_clp_venc    Int?
+  anio              Int?
+  vencido           String?   @db.VarChar(40)
+  tramo             String?   @db.VarChar(255)
+  fecha_ult_gestion DateTime? @db.DateTime(0)
+  comentarios_gest  String?   @db.VarChar(1000)
+
+  @@ignore
+}
+
+model cob_comite_cobranzas {
+  id_comite             Int                     @id @default(autoincrement())
+  fecha_comite          DateTime                @db.Date
+  observaciones         String?                 @db.Text
+  creado_por            Int
+  fecha_creacion        DateTime?               @default(now()) @db.DateTime(0)
+  cob_comite_decisiones cob_comite_decisiones[]
+}
+
+model cob_comite_decisiones {
+  id_decision          Int                  @id @default(autoincrement())
+  id_comite            Int
+  id_pagare            Int
+  decision             String               @db.Text
+  responsable          Int?
+  fecha_compromiso     DateTime?            @db.Date
+  estado               String?              @default("pendiente") @db.VarChar(20)
+  fecha_creacion       DateTime?            @default(now()) @db.DateTime(0)
+  activo               Boolean              @default(true)
+  cob_comite_cobranzas cob_comite_cobranzas @relation(fields: [id_comite], references: [id_comite], onDelete: Cascade, onUpdate: Restrict, map: "cob_comite_decisiones_ibfk_1")
+  pagare_parcela       pagare_parcela       @relation(fields: [id_pagare], references: [id_pagare], onDelete: Cascade, onUpdate: Restrict, map: "cob_comite_decisiones_ibfk_2")
+
+  @@index([id_comite], map: "cob_comite_decisiones_ibfk_1")
+  @@index([id_pagare], map: "cob_comite_decisiones_ibfk_2")
+}
+
+model cob_modalidad_pcv_cvh {
+  id_modalidad          Int     @id @default(autoincrement())
+  modalidad_pcv_cvh     String? @db.VarChar(255)
+  activo                Int?
+  seleccionable_alcrear Int?
+  selecciobable_mod     Int?
+  meses                 Int?
+}
+
+model cob_movimientos_banco {
+  id_mov                Int       @id @default(autoincrement())
+  fecha_transaccion     DateTime? @db.DateTime(0)
+  descripcion           String?   @db.VarChar(255)
+  num_documento         String?   @db.VarChar(255)
+  cargos                Int?
+  abonos                Int?
+  saldo                 Int?
+  corr_banco            Int?
+  nombre                String?   @db.VarChar(255)
+  rut                   String?   @db.VarChar(255)
+  banco                 String?   @db.VarChar(255)
+  fecha_carga           DateTime? @db.DateTime(0)
+  mov_utilizado         Int?
+  id_pago_vinculado     Int?
+  tipo_pago_vinculado   String?   @db.VarChar(100)
+  rut_empresa           String?   @db.VarChar(255)
+  descartado            Int?
+  fecha_actualizacion   DateTime? @db.DateTime(0)
+  usuario_actualizacion Int?
+}
+
+model cob_tmc {
+  id_tmc          Int       @id @default(autoincrement())
+  tmc_dia         Decimal?  @db.Decimal(10, 3)
+  tmc_anual       Decimal?  @db.Decimal(10, 2)
+  fecha           DateTime? @db.Date
+  tmc_dia_pesos   Decimal?  @db.Decimal(10, 3)
+  tmc_anual_pesos Decimal?  @db.Decimal(10, 2)
+
+  @@unique([tmc_anual, fecha], map: "tmc_anual")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model cob_validacion_manual {
+  numero      Int?
+  fecha       DateTime? @db.Date
+  monto_pesos Int?
+  parcela     String?   @db.VarChar(255)
+
+  @@ignore
+}
+
+model cobranzas_base {
+  id_deuda                                               Int                  @id @default(autoincrement())
+  Valor_UF                                               String?              @map("Valor UF") @db.VarChar(255)
+  Fecha_de_vencimiento                                   DateTime?            @map("Fecha de vencimiento") @db.Date
+  fecha_pagare                                           DateTime?            @db.Date
+  Rut                                                    String?              @db.VarChar(255)
+  Propietario                                            String?              @db.VarChar(255)
+  Parcela                                                String?              @db.VarChar(255)
+  GGCC_UF                                                String?              @map("GGCC UF") @db.VarChar(255)
+  GGCC__                                                 String?              @map("GGCC $") @db.VarChar(255)
+  Descuento_GGCC                                         String?              @map("Descuento GGCC") @db.VarChar(255)
+  GGCC_total                                             String?              @map("GGCC total") @db.VarChar(255)
+  Cobro_ClubHouse                                        String?              @map("Cobro ClubHouse") @db.VarChar(255)
+  clubhouseUF                                            Float?               @db.Float
+  Cobro_agua                                             String?              @map("Cobro agua") @db.VarChar(255)
+  aguaUF                                                 Float?               @db.Float
+  Cobro_credito                                          String?              @map("Cobro credito") @db.VarChar(255)
+  creditoUF                                              Float?               @db.Float
+  multas_y_rebajas                                       String?              @map("multas y rebajas") @db.VarChar(255)
+  multas_e_intereses_por__mora                           String?              @map("multas e intereses por  mora") @db.VarChar(255)
+  N__CUOTA                                               String?              @map("Nº CUOTA") @db.VarChar(255)
+  Cuota_UF                                               String?              @map("Cuota UF") @db.VarChar(255)
+  Cuota__                                                String?              @map("Cuota $") @db.VarChar(255)
+  Total_a_pagar                                          String?              @map("Total a pagar") @db.VarChar(255)
+  Descuentos                                             String?              @db.VarChar(255)
+  Total_a_pagar_formulas                                 String?              @map("Total a pagar formulas") @db.VarChar(255)
+  Diferencias                                            String?              @db.VarChar(255)
+  Deuda                                                  Float?               @db.Float
+  deuda_uf                                               Decimal?             @db.Decimal(14, 8)
+  interes_uf                                             Decimal?             @db.Decimal(10, 2)
+  Deuda_si                                               Float?               @db.Float
+  Correo                                                 String?              @db.VarChar(255)
+  Fecha_de_pago                                          String?              @map("Fecha de pago") @db.VarChar(255)
+  Valor_pagado                                           String?              @map("Valor pagado") @db.VarChar(255)
+  M_todo_de_pago                                         String?              @map("Método de pago") @db.VarChar(255)
+  Banco_origen                                           String?              @map("Banco origen") @db.VarChar(255)
+  Banco_destino                                          String?              @map("Banco destino") @db.VarChar(255)
+  Comentarios                                            String?              @db.VarChar(255)
+  Estado_BD                                              String?              @map("Estado BD") @db.VarChar(255)
+  RUT_BD                                                 String?              @map("RUT BD") @db.VarChar(255)
+  Nombre_BD                                              String?              @map("Nombre BD") @db.VarChar(255)
+  Validador                                              String?              @db.VarChar(255)
+  Fecha_Firma_cliente_BD                                 DateTime?            @map("Fecha Firma cliente BD") @db.Date
+  Rut_2__propietario_2_                                  String?              @map("Rut 2 (propietario 2)") @db.VarChar(255)
+  Deuda_sin_pagar_                                       String?              @map("Deuda sin pagaré") @db.VarChar(255)
+  proyecto                                               String?              @db.VarChar(255)
+  estado_cuota                                           Int?
+  original_ci                                            Int?
+  original_si                                            Int?
+  original_uf                                            Decimal?             @db.Decimal(14, 8)
+  estado_pagare                                          Int?
+  verificado_por                                         Int?
+  fecha_mod_pagare                                       DateTime?            @db.DateTime(0)
+  id_pagare                                              Int?
+  ordinal_cuota                                          Int?
+  fecha_ult_pago                                         DateTime?            @db.Date
+  estado_cuota_cobranzas_base_estado_cuotaToestado_cuota estado_cuota?        @relation("cobranzas_base_estado_cuotaToestado_cuota", fields: [estado_cuota], references: [id_estado], map: "cobranzas_base_ibfk_1")
+  pago_cuotas                                            pago_cuotas[]
+  pago_cuotas_cheque                                     pago_cuotas_cheque[]
+
+  @@unique([N__CUOTA, Parcela, id_pagare], map: "Fecha de vencimiento")
+  @@index([Deuda], map: "Deuda")
+  @@index([Fecha_de_vencimiento], map: "Fecha de vencimiento_2")
+  @@index([Parcela], map: "Parcela")
+  @@index([Validador], map: "Validador")
+  @@index([estado_cuota], map: "estado_cuota")
+  @@index([estado_pagare], map: "estado_pagare")
+  @@index([fecha_ult_pago], map: "fecha_ult_pago")
+  @@index([id_pagare], map: "id_pagare")
+  @@index([proyecto], map: "proyecto")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model cobros_aguas {
+  C_digo_correcto String? @map("Código correcto") @db.VarChar(255)
+  codigo_lectores String? @db.VarChar(255)
+  medicion        String? @db.VarChar(255)
+  fecha           String? @db.VarChar(255)
+  consumo_mes     String? @db.VarChar(255)
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model condonadas_20220829 {
+  id_deuda     Int      @default(0)
+  deuda_uf     Decimal? @db.Decimal(14, 8)
+  estado_cuota Int?
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model contacto_proyecto {
+  proyecto        String? @db.VarChar(100)
+  correo_contacto String? @db.VarChar(100)
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model correos_prop {
+  rut    String? @db.VarChar(255)
+  Correo String? @db.VarChar(255)
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model correos_tmp {
+  parcela      String? @db.VarChar(255)
+  correo_ant   String? @db.VarChar(255)
+  correo_nuevo String? @db.VarChar(255)
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model cruce_correo_parcela {
+  parcela   String? @db.VarChar(255)
+  correo    String? @db.VarChar(255)
+  id_pagare Int?
+  id_deudor Int?
+
+  @@ignore
+}
+
+model cuotas_go {
+  id_cuota_go           Int                     @id @default(autoincrement())
+  numero_cuota          String?                 @db.VarChar(10)
+  deuda_cuota           Decimal?                @db.Decimal(6, 2)
+  interes_cuota         Decimal?                @db.Decimal(10, 2)
+  original_cuota        Decimal?                @db.Decimal(6, 2)
+  id_pagare             Int?
+  fecha_venc            DateTime?               @db.Date
+  fecha_creacion        DateTime?               @db.DateTime(0)
+  creado_por            Int?
+  estado_cuota          Int?
+  ordinal_cuota         Int?
+  fecha_ult_pago        DateTime?               @db.Date
+  pago_cuotas_go        pago_cuotas_go[]
+  pago_cuotas_go_cheque pago_cuotas_go_cheque[]
+
+  @@unique([id_pagare, fecha_venc], map: "id_pagare")
+}
+
+model cuotas_plan_pago {
+  id_cuota_pp       Int              @id @default(autoincrement())
+  fecha_vencimiento DateTime?        @db.Date
+  deuda_uf_pp       Decimal?         @db.Decimal(10, 2)
+  interes_uf_pp     Decimal?         @db.Decimal(10, 2)
+  estado_cuota_pp   Int?
+  original_cuota_pp Decimal?         @db.Decimal(10, 2)
+  id_plan_pago      Int?
+  num_cuota         String?          @db.VarChar(255)
+  ordinal_cuota     Int?
+  fecha_ult_pago    DateTime?        @db.Date
+  pago_cuotas_pp    pago_cuotas_pp[]
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model datos_csv_toku {
+  fechapago         String?   @db.VarChar(255)
+  rut               String?   @db.VarChar(255)
+  id_producto_toku  String?   @db.VarChar(255)
+  cuota             String?   @db.VarChar(255)
+  fechavenc         String?   @db.VarChar(255)
+  monto             String?   @db.VarChar(255)
+  medio_pago        String?   @db.VarChar(255)
+  id_deuda          String?   @db.VarChar(255)
+  archivo           String?   @db.VarChar(255)
+  fechahora_proceso DateTime? @db.DateTime(0)
+
+  @@index([fechapago], map: "id_deuda")
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model datos_csv_toku_f2 {
+  fechapago            String?   @db.VarChar(255)
+  rut                  String?   @db.VarChar(255)
+  id_producto_toku     String?   @db.VarChar(255)
+  monto_pagado_cliente String?   @db.VarChar(255)
+  fechavenc            String?   @db.VarChar(255)
+  monto                String?   @db.VarChar(255)
+  medio_pago           String?   @db.VarChar(255)
+  id_deuda             String?   @db.VarChar(255)
+  archivo              String?   @db.VarChar(255)
+  fechahora_proceso    DateTime? @db.DateTime(0)
+  id_payout            String?   @db.VarChar(255)
+  fecha_deposito       DateTime? @db.Date
+  monto_deposito       String?   @db.VarChar(255)
+  monto_deposito_deuda String?   @db.VarChar(255)
+  cargado_edipro       Int?
+  fecha_carga          DateTime? @db.Date
+  id_pagare            Int?
+
+  @@index([fechapago], map: "id_deuda")
+  @@ignore
+}
+
+model deudor_modificaciones {
+  id_modificacion Int       @id @default(autoincrement())
+  fecha           DateTime? @db.DateTime(0)
+  modificado_por  Int?
+  ant_nombre      String?   @db.VarChar(255)
+  nvo_nombre      String?   @db.VarChar(255)
+  ant_correo      String?   @db.VarChar(255)
+  nvo_correo      String?   @db.VarChar(255)
+  ant_rut         String?   @db.VarChar(255)
+  nvo_rut         String?   @db.VarChar(255)
+  ant_fono        Int?
+  nvo_fono        Int?
+  id_deudor       Int?
+  ant_direccion   String?   @db.VarChar(255)
+  nvo_direccion   String?   @db.VarChar(255)
+  ant_comuna      Int?
+  nvo_comuna      Int?
+}
+
+model edipro_auxiliar_valores {
+  id         Int       @id @default(autoincrement())
+  parcela    String?   @db.VarChar(50)
+  valor      Int?
+  concepto   String?   @db.VarChar(50)
+  fecha_venc DateTime? @db.Date
+}
+
+model edipro_colillas {
+  id                           String    @unique(map: "id") @db.VarChar(255)
+  copropiedad_id               String?   @db.VarChar(255)
+  copropiedad_numero           String?   @db.VarChar(255)
+  mes                          Int?
+  anio                         Int?
+  gastocomun                   Decimal?  @db.Decimal(10, 2)
+  fondoreserva                 Decimal?  @db.Decimal(10, 2)
+  multa                        Decimal?  @db.Decimal(10, 2)
+  interes                      Decimal?  @db.Decimal(10, 2)
+  saldo_anterior_gasto_comun   Decimal?  @db.Decimal(10, 2)
+  saldo_anterior_fondo_reserva Decimal?  @db.Decimal(10, 2)
+  saldo_anterior_multas        Decimal?  @db.Decimal(10, 2)
+  saldo_anterior_otras_deudas  Decimal?  @db.Decimal(10, 2)
+  total_cobros_individuales    Decimal?  @db.Decimal(10, 2)
+  total_gastos_del_mes         Decimal?  @db.Decimal(10, 2)
+  total_otros_cobros           Decimal?  @db.Decimal(10, 2)
+  totalinmobiliaria            Decimal?  @db.Decimal(10, 2)
+  total_final_copropietario    Decimal?  @db.Decimal(10, 2)
+  colilla                      String?   @db.VarChar(255)
+  fecha_vencimiento            DateTime? @db.Date
+  fecha_emision                DateTime? @db.Date
+  pertenece_a_inmobiliaria     Boolean?
+  emitida                      Boolean?
+  base                         String?   @db.VarChar(30)
+  id_parcela_cobro             String?   @db.VarChar(255)
+  fecha_calculada              DateTime? @db.Date
+
+  @@index([base], map: "base")
+  @@index([copropiedad_id], map: "copropiedad_id")
+  @@index([copropiedad_numero], map: "copropiedad_numero")
+  @@index([fecha_emision], map: "fecha_emision")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model edipro_colillas_bk {
+  id                           String    @db.VarChar(255)
+  copropiedad_id               String?   @db.VarChar(255)
+  copropiedad_numero           String?   @db.VarChar(255)
+  mes                          Int?
+  anio                         Int?
+  gastocomun                   Decimal?  @db.Decimal(10, 2)
+  fondoreserva                 Decimal?  @db.Decimal(10, 2)
+  multa                        Decimal?  @db.Decimal(10, 2)
+  interes                      Decimal?  @db.Decimal(10, 2)
+  saldo_anterior_gasto_comun   Decimal?  @db.Decimal(10, 2)
+  saldo_anterior_fondo_reserva Decimal?  @db.Decimal(10, 2)
+  saldo_anterior_multas        Decimal?  @db.Decimal(10, 2)
+  saldo_anterior_otras_deudas  Decimal?  @db.Decimal(10, 2)
+  total_cobros_individuales    Decimal?  @db.Decimal(10, 2)
+  total_gastos_del_mes         Decimal?  @db.Decimal(10, 2)
+  total_otros_cobros           Decimal?  @db.Decimal(10, 2)
+  totalinmobiliaria            Decimal?  @db.Decimal(10, 2)
+  total_final_copropietario    Decimal?  @db.Decimal(10, 2)
+  colilla                      String?   @db.VarChar(255)
+  fecha_vencimiento            DateTime? @db.Date
+  fecha_emision                DateTime? @db.Date
+  pertenece_a_inmobiliaria     Boolean?
+  emitida                      Boolean?
+  base                         String?   @db.VarChar(30)
+  id_parcela_cobro             String?   @db.VarChar(255)
+
+  @@index([base], map: "base")
+  @@index([copropiedad_id], map: "copropiedad_id")
+  @@index([fecha_emision], map: "fecha_emision")
+  @@index([id], map: "id")
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model edipro_colillas_bk_hsj {
+  id                           String    @db.VarChar(255)
+  copropiedad_id               String?   @db.VarChar(255)
+  copropiedad_numero           String?   @db.VarChar(255)
+  mes                          Int?
+  anio                         Int?
+  gastocomun                   Decimal?  @db.Decimal(10, 2)
+  fondoreserva                 Decimal?  @db.Decimal(10, 2)
+  multa                        Decimal?  @db.Decimal(10, 2)
+  interes                      Decimal?  @db.Decimal(10, 2)
+  saldo_anterior_gasto_comun   Decimal?  @db.Decimal(10, 2)
+  saldo_anterior_fondo_reserva Decimal?  @db.Decimal(10, 2)
+  saldo_anterior_multas        Decimal?  @db.Decimal(10, 2)
+  saldo_anterior_otras_deudas  Decimal?  @db.Decimal(10, 2)
+  total_cobros_individuales    Decimal?  @db.Decimal(10, 2)
+  total_gastos_del_mes         Decimal?  @db.Decimal(10, 2)
+  total_otros_cobros           Decimal?  @db.Decimal(10, 2)
+  totalinmobiliaria            Decimal?  @db.Decimal(10, 2)
+  total_final_copropietario    Decimal?  @db.Decimal(10, 2)
+  colilla                      String?   @db.VarChar(255)
+  fecha_vencimiento            DateTime? @db.Date
+  fecha_emision                DateTime? @db.Date
+  pertenece_a_inmobiliaria     Boolean?
+  emitida                      Boolean?
+  base                         String?   @db.VarChar(30)
+  id_parcela_cobro             String?   @db.VarChar(255)
+  fecha_calculada              DateTime? @db.Date
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model edipro_consolidado_planillas {
+  Parcela                      String? @db.VarChar(255)
+  Copropietario                String? @db.VarChar(255)
+  DeudaFondoReserva            String? @db.VarChar(255)
+  DeudaFondoOperacional        String? @db.VarChar(255)
+  DeudaFondoMultas             String? @db.VarChar(255)
+  DeudaFondoIntereses          String? @db.VarChar(255)
+  DeudaGastoComun              String? @db.VarChar(255)
+  DeudaCuotaMantencion         String? @db.VarChar(255)
+  DeudaArriendoEspaciosComunes String? @db.VarChar(255)
+  DeudaSaldoAntCJ              String? @db.VarChar(255)
+  DeudaSuministroElectrico     String? @db.VarChar(255)
+  DeudaSuministroAgua          String? @db.VarChar(255)
+  DeudaTotal                   String? @db.VarChar(255)
+  UltimoIngreso                String? @db.VarChar(255)
+  porc                         String? @db.VarChar(255)
+  MesesDeuda                   String? @db.VarChar(255)
+  MorosidadUltimoCierre        String? @db.VarChar(255)
+  DeudaInmobiliaria            String? @db.VarChar(255)
+  base_origen                  String? @db.VarChar(255)
+  fecha_actualizacion          String? @db.VarChar(255)
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model edipro_copropiedades {
+  id                     String   @db.VarChar(255)
+  numero                 String?  @db.VarChar(255)
+  propietario_id         String?  @db.VarChar(255)
+  propietario_nombre     String?  @db.VarChar(255)
+  cuarentena             Boolean?
+  pertenece_inmobiliaria Boolean?
+  prorrateo_unidad       String?  @db.VarChar(255)
+  prorrateo_total        String?  @db.VarChar(255)
+  deuda_total            Int?
+  base                   String?  @db.VarChar(40)
+  id_pagare              Int?
+  id_producto_toku       String?  @db.VarChar(100)
+
+  @@unique([id, base], map: "id_2")
+  @@index([id], map: "id")
+  @@index([numero], map: "numero")
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model edipro_copropiedades_bk {
+  id                     String   @db.VarChar(255)
+  numero                 String?  @db.VarChar(255)
+  propietario_id         String?  @db.VarChar(255)
+  propietario_nombre     String?  @db.VarChar(255)
+  cuarentena             Boolean?
+  pertenece_inmobiliaria Boolean?
+  prorrateo_unidad       String?  @db.VarChar(255)
+  prorrateo_total        String?  @db.VarChar(255)
+  deuda_total            Int?
+  base                   String?  @db.VarChar(40)
+  id_pagare              Int?
+  id_producto_toku       String?  @db.VarChar(100)
+
+  @@index([id], map: "id")
+  @@index([numero], map: "numero")
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model edipro_copropiedades_bk_hsj {
+  id                     String   @db.VarChar(255)
+  numero                 String?  @db.VarChar(255)
+  propietario_id         String?  @db.VarChar(255)
+  propietario_nombre     String?  @db.VarChar(255)
+  cuarentena             Boolean?
+  pertenece_inmobiliaria Boolean?
+  prorrateo_unidad       String?  @db.VarChar(255)
+  prorrateo_total        String?  @db.VarChar(255)
+  deuda_total            Int?
+  base                   String?  @db.VarChar(40)
+  id_pagare              Int?
+  id_producto_toku       String?  @db.VarChar(100)
+
+  @@ignore
+}
+
+model edipro_detalle_agua_historico {
+  id                  Int       @id @default(autoincrement())
+  parcela             String?   @db.VarChar(255)
+  periodo             String?   @db.VarChar(255)
+  monto_colilla       Int?      @default(0)
+  monto_repactaciones Int?      @default(0)
+  monto_ajustes       Int?      @default(0)
+  monto_condonaciones Int?      @default(0)
+  monto_ingresos      Int?      @default(0)
+  saldo_colilla       Int?      @default(0)
+  id_pagare           Int?
+  fecha_venc          DateTime? @db.Date
+}
+
+model edipro_detalle_ggcc_historico {
+  id                  Int       @id @default(autoincrement())
+  parcela             String?   @db.VarChar(255)
+  periodo             String?   @db.VarChar(255)
+  monto_colilla       Int?      @default(0)
+  monto_repactaciones Int?      @default(0)
+  monto_ajustes       Int?      @default(0)
+  monto_condonaciones Int?      @default(0)
+  monto_ingresos      Int?      @default(0)
+  saldo_colilla       Int?      @default(0)
+  id_pagare           Int?
+  fecha_venc          DateTime? @db.Date
+  cobro_uf            Decimal?  @db.Decimal(10, 2)
+  multa_uf            Decimal?  @db.Decimal(10, 2)
+  saldo_uf            Decimal?  @db.Decimal(10, 2)
+}
+
+model edipro_detalle_ggcc_historico_bk {
+  id                  Int       @id @default(autoincrement())
+  parcela             String?   @db.VarChar(255)
+  periodo             String?   @db.VarChar(255)
+  monto_colilla       Int?      @default(0)
+  monto_repactaciones Int?      @default(0)
+  monto_ajustes       Int?      @default(0)
+  monto_condonaciones Int?      @default(0)
+  monto_ingresos      Int?      @default(0)
+  saldo_colilla       Int?      @default(0)
+  id_pagare           Int?
+  fecha_venc          DateTime? @db.Date
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model edipro_detalle_ggcc_interes_historico {
+  Unidad            String?   @db.VarChar(30)
+  idpagare          Int?
+  Fecha_Vencimiento DateTime? @map("Fecha Vencimiento") @db.Date
+  interes_historico Decimal?  @db.Decimal(10, 4)
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model edipro_hlc_hist {
+  parcela        String? @db.VarChar(255)
+  deuda_actual   Int?
+  id_pagare      Int?
+  comentarios    String? @db.VarChar(255)
+  deuda_original Int?
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model edipro_hsj_hist {
+  parcela        String? @db.VarChar(255)
+  deuda_actual   Int?
+  id_pagare      Int?
+  comentarios    String? @db.VarChar(255)
+  deuda_original Int?
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model edipro_hsj_hist_agua {
+  parcela        String? @db.VarChar(255)
+  deuda_actual   Int?
+  id_pagare      Int?
+  comentarios    String? @db.VarChar(255)
+  deuda_original Int?
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model edipro_hsj_hist_elec {
+  parcela        String? @db.VarChar(255)
+  deuda_actual   Int?
+  id_pagare      Int?
+  comentarios    String? @db.VarChar(255)
+  deuda_original Int?
+
+  @@ignore
+}
+
+model edipro_incidencias {
+  id_incidencia    Int       @id @default(autoincrement())
+  id_pagare        Int?
+  descripcion      String?   @db.VarChar(500)
+  link_imagen      String?   @db.VarChar(255)
+  id_usuario       Int?
+  fecha_ingreso    DateTime? @db.DateTime(0)
+  tipo             String?   @db.VarChar(255)
+  fecha_incidencia DateTime? @db.Date
+}
+
+model emails {
+  id      Int     @id @default(autoincrement())
+  Rut     String? @db.VarChar(255)
+  Correo  String? @db.VarChar(255)
+  vigente Int?
+
+  @@unique([Rut, Correo], map: "Rut_2")
+  @@index([Rut], map: "Rut")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model empresas {
+  Empresa        String  @db.VarChar(20)
+  Rut_empresa    String  @db.VarChar(20)
+  Nombre_empresa String? @db.VarChar(255)
+  Clasificacion  String? @db.VarChar(255)
+
+  @@ignore
+}
+
+model envios_cobranzas {
+  id_envio_cobro Int       @id @default(autoincrement())
+  fechahora      DateTime? @db.DateTime(0)
+  parcela        String?   @db.VarChar(100)
+  proyecto       String?   @db.VarChar(100)
+  inmobiliaria   String?   @db.VarChar(100)
+  enviado_por    Int?
+  correo         String?   @db.VarChar(100)
+  id_pagare      Int?
+}
+
+model envios_cobro_prueba {
+  id_envio        Int       @id @default(autoincrement())
+  mail            String?   @db.VarChar(255)
+  fechahora_envio DateTime? @db.DateTime(0)
+  parcela         String?   @db.VarChar(20)
+  fecha_venc      DateTime? @db.Date
+}
+
+model estado_cheque {
+  id_estado     Int     @id @default(autoincrement())
+  nombre_estado String? @db.VarChar(50)
+  activo        Int?
+  aceptado      Int?
+  rechazado     Int?
+  tipo_cheque   String? @db.VarChar(5)
+}
+
+model estado_cobranza_historial {
+  id_historial       Int       @id @default(autoincrement())
+  id_pagare          Int?
+  fechahora_cambio   DateTime? @db.DateTime(0)
+  id_estado_cobranza Int?
+  modificado_por     Int?
+}
+
+model estado_cobranza_pagare {
+  id_estado      Int              @id @default(autoincrement())
+  nombre_estado  String?          @db.VarChar(50)
+  activo         Int?
+  pagare_parcela pagare_parcela[]
+}
+
+model estado_cuota {
+  id_estado                                                Int              @id @default(autoincrement())
+  estado_cuota                                             String?          @db.VarChar(40)
+  cobranzas_base_cobranzas_base_estado_cuotaToestado_cuota cobranzas_base[] @relation("cobranzas_base_estado_cuotaToestado_cuota")
+}
+
+model estado_pagare {
+  id_estado           Int              @id @default(autoincrement())
+  nombre_estado       String?          @db.VarChar(50)
+  activo              Int?
+  en_cobranza         Int?
+  nombre_estado_stock String?          @db.VarChar(255)
+  pagare_activo       Int?
+  parcela_activa      Int?
+  escriturado         Int?
+  promesa             String?          @db.VarChar(255)
+  pagare_parcela      pagare_parcela[]
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model ft_cartola_bancaria {
+  id                 String?   @db.VarChar(50)
+  description        String?   @db.VarChar(255)
+  amount             Int?
+  currency           String?   @db.VarChar(5)
+  post_date          DateTime? @db.DateTime(0)
+  transaction_date   DateTime? @db.DateTime(0)
+  type               String?   @db.VarChar(50)
+  recipient_account  String?   @db.VarChar(255)
+  sender_holder_id   String?   @db.VarChar(50)
+  sender_holder_name String?   @db.VarChar(255)
+  comment            String?   @db.Text
+  reference_id       String?   @db.VarChar(50)
+  pending            String?   @db.VarChar(10)
+  object             String?   @db.VarChar(50)
+  fecha_escritura    DateTime? @db.DateTime(0)
+  banco_origen       String?   @db.VarChar(255)
+  empresa_origen     String?   @db.VarChar(255)
+  rut_origen         String?   @db.VarChar(255)
+  cuenta_origen      String?   @db.VarChar(255)
+
+  @@unique([id, post_date, sender_holder_id], map: "id")
+  @@ignore
+}
+
+model gestiones {
+  id_gestion          Int                  @id @default(autoincrement())
+  fechahora           DateTime?            @db.DateTime(0)
+  id_resultado        Int?
+  id_usuario          Int?
+  observaciones       String?              @db.VarChar(1000)
+  id_pagare           Int?
+  id_deudor           Int?
+  prox_gestion        DateTime?            @db.Date
+  prox_gestor         Int?
+  id_canal            Int?
+  id_respuesta        Int?
+  acuerdos_pago       acuerdos_pago[]
+  gestiones_resultado gestiones_resultado? @relation(fields: [id_resultado], references: [id_resultado], map: "gestiones_ibfk_1")
+  usuarios            usuarios?            @relation(fields: [id_usuario], references: [Id_Ejecutivo], map: "gestiones_ibfk_2")
+  deudores            deudores?            @relation(fields: [id_deudor], references: [id], map: "gestiones_ibfk_3")
+
+  @@index([fechahora], map: "fechahora")
+  @@index([id_deudor], map: "id_deudor")
+  @@index([id_pagare], map: "id_pagare")
+  @@index([id_resultado], map: "id_resultado")
+  @@index([id_usuario], map: "id_usuario")
+}
+
+model gestiones_canal {
+  id_canal Int     @id @default(autoincrement())
+  nombre   String? @db.VarChar(255)
+  activo   Int?
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model gestiones_homologacion {
+  id_resultado Int?
+  id_canal     Int?
+  id_respuesta Int?
+
+  @@ignore
+}
+
+model gestiones_respuestas {
+  id_respuesta  Int     @id @default(autoincrement())
+  nombre        String? @db.VarChar(255)
+  activo        Int?    @default(1)
+  dias_prox     Int?
+  tipo_contacto String? @db.VarChar(255)
+}
+
+model gestiones_resultado {
+  id_resultado  Int         @id @default(autoincrement())
+  canal         String?     @db.VarChar(50)
+  id_canal      Int?
+  respuesta     String?     @db.VarChar(50)
+  id_respuesta  Int?
+  tipo_contacto String?     @db.VarChar(100)
+  dias_prox     Int?
+  gestiones     gestiones[]
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model homologacion_bancos {
+  dato_archivo       String? @db.VarChar(255)
+  homologacion_banco Int?
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model homologacion_fondo_edipro {
+  base          String? @db.VarChar(30)
+  fondo         String? @db.VarChar(30)
+  nombre_db     String? @db.VarChar(255)
+  tipo_deuda    String? @db.VarChar(255)
+  nombre_edipro String? @db.VarChar(255)
+  codigo_tipo   String? @db.VarChar(255)
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model homologacion_medio_pago {
+  dato_archivo          String? @db.VarChar(255)
+  homologacion_cobranza String? @db.VarChar(255)
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model homologacion_proyectos {
+  proyecto     String? @db.VarChar(255)
+  homologacion String? @db.VarChar(255)
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model homologacion_toku_mediopago {
+  mediopago_toku String? @db.VarChar(255)
+  id_medio_pago  Int?
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model kf_atencion_prop {
+  id_Data                      String? @db.VarChar(100)
+  created_by_Id                String? @db.VarChar(100)
+  created_by_Name              String? @db.VarChar(100)
+  created_by_Kind              String? @db.VarChar(100)
+  Name                         String? @db.VarChar(100)
+  Parcela_id                   String? @db.VarChar(100)
+  Parcela_nombre               String? @db.VarChar(100)
+  Parcela_flowname             String? @db.VarChar(100)
+  Parcela_sintitulo1           String? @db.VarChar(100)
+  Parcela_sintitulo2           String? @db.VarChar(100)
+  creado                       String? @db.VarChar(100)
+  status                       String? @db.VarChar(100)
+  fecha_de_ingreso             String? @db.VarChar(100)
+  categoria                    String? @db.VarChar(100)
+  contrato_firmado             String? @db.VarChar(100)
+  fecha_de_aprobacion          String? @db.VarChar(100)
+  aprobacion_del_cliente       String? @db.VarChar(100)
+  adhiere_reglamento           String? @db.VarChar(100)
+  al_dia_financiamiento        String? @db.VarChar(100)
+  adjuntar_pcv_uploaded        String? @db.VarChar(100)
+  adjuntar_pcv_name            String? @db.VarChar(100)
+  adjuntar_pcv_id              String? @db.VarChar(100)
+  adjuntar_pcv_key             String? @db.VarChar(100)
+  adjuntar_pcv_size            String? @db.VarChar(100)
+  adjuntar_pcv_fileext         String? @db.VarChar(100)
+  id_solicitud                 String? @db.VarChar(100)
+  resuelve_consejo             String? @db.VarChar(100)
+  pago_al_arquitecto           String? @db.VarChar(100)
+  construccion_aprobada        String? @db.VarChar(100)
+  ggcc_pagos                   String? @db.VarChar(100)
+  nuevo_propietario            String? @db.VarChar(100)
+  proyecto_con_obs             String? @db.VarChar(100)
+  documentos_correctos         String? @db.VarChar(100)
+  cuenta_con_medidor           String? @db.VarChar(100)
+  instalacion                  String? @db.VarChar(100)
+  instalacion1                 String? @db.VarChar(100)
+  instalacion2                 String? @db.VarChar(100)
+  ejecutivo18                  String? @db.VarChar(100)
+  tiene_factibilidad           String? @db.VarChar(100)
+  proyecto                     String? @db.VarChar(100)
+  al_dia_clubhouse             String? @db.VarChar(100)
+  al_dia_agua                  String? @db.VarChar(100)
+  ggcc_agua_y_ch_aldia         String? @db.VarChar(100)
+  gastos_de_financiamiento_cv  String? @db.VarChar(100)
+  red_distribucion_cv          String? @db.VarChar(100)
+  Al_dia_financiamiento_1      String? @db.VarChar(100)
+  acepta_resolucion            String? @db.VarChar(100)
+  tipo_de_venta                String? @db.VarChar(100)
+  aplicar_proceso_resciliacion String? @db.VarChar(100)
+  cuotas_financiamiento_aldia  String? @db.VarChar(100)
+  respuesta_del_cliente1       String? @db.VarChar(100)
+  financiamiento_aldia_xx      String? @db.VarChar(100)
+  carpeta_fisica_py            String? @db.VarChar(100)
+  id                           String? @db.VarChar(100)
+  acitivity1                   String? @db.VarChar(100)
+  activity2                    String? @db.VarChar(100)
+  asignado_a_id                String? @db.VarChar(100)
+  asignado_a_nombre            String? @db.VarChar(100)
+  asignado_a_tipo              String? @db.VarChar(100)
+
+  @@ignore
+}
+
+model la_base_parcelas_agua {
+  id                    Int       @id @default(autoincrement())
+  codigo_terreno        String?   @db.VarChar(255)
+  CAMINO                String?   @db.VarChar(255)
+  id_pagare             Int?
+  convenio              Int?
+  id_proyecto           Int?
+  desc_edipro           Int?      @default(1)
+  id_parcela            Int?
+  inhabilitado          Int?      @default(0)
+  motivo_inhabilitacion String?   @db.VarChar(255)
+  fecha_inhabilitacion  DateTime? @db.Date
+  clasif_terreno        String?   @db.VarChar(50)
+
+  @@unique([codigo_terreno, id_proyecto], map: "codigo_terreno")
+}
+
+model la_base_parcelas_luz {
+  id                    Int       @id @default(autoincrement())
+  codigo_terreno        String?   @unique(map: "codigo_terreno") @db.VarChar(255)
+  CAMINO                String?   @db.VarChar(255)
+  id_pagare             Int?
+  convenio              Int?
+  id_proyecto           Int?
+  id_parcela            Int?
+  inhabilitado          Int?      @default(0)
+  motivo_inhabilitacion String?   @db.VarChar(255)
+  fecha_inhabilitacion  DateTime? @db.Date
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model la_caudalimetros {
+  estanque     String? @db.VarChar(100)
+  caudalimetro String? @db.VarChar(100)
+  etapa        String? @db.VarChar(100)
+  id_parcela   Int?
+  parcela      String? @db.VarChar(10)
+
+  @@ignore
+}
+
+model la_contratos_servicio {
+  id_contrato          Int                                 @id @default(autoincrement())
+  id_contrato_servicio Int
+  tipo_servicio        la_contratos_servicio_tipo_servicio
+  archivo              String                              @db.VarChar(255)
+  vigente              Boolean                             @default(true)
+  fecha_subida         DateTime                            @default(now()) @db.DateTime(0)
+  subido_por           Int
+  version              String?                             @db.VarChar(255)
+  rut_responsable      String?                             @db.VarChar(15)
+  nombre_responsable   String?                             @db.VarChar(255)
+  fecha_contrato       DateTime?                           @db.Date
+
+  @@index([id_contrato_servicio], map: "idx_contrato_servicio")
+  @@index([tipo_servicio], map: "idx_tipo_servicio")
+  @@index([vigente], map: "idx_vigente")
+}
+
+model la_cortes_reposiciones_agua {
+  id_evento          Int       @id @default(autoincrement())
+  id_medidor         Int
+  fecha_corte        DateTime  @db.DateTime(0)
+  motivo_corte       String?   @db.Text
+  costo_reposicion   Int
+  fecha_reposicion   DateTime? @db.DateTime(0)
+  motivo_reposicion  String?   @db.Text
+  usuario_corte      String    @db.VarChar(50)
+  usuario_reposicion String?   @db.VarChar(50)
+  corte_activo       Int?
+}
+
+model la_cortes_reposiciones_luz {
+  id_evento          Int       @id @default(autoincrement())
+  id_medidor         Int
+  fecha_corte        DateTime  @db.DateTime(0)
+  motivo_corte       String?   @db.Text
+  costo_reposicion   Int
+  fecha_reposicion   DateTime? @db.DateTime(0)
+  motivo_reposicion  String?   @db.Text
+  usuario_corte      String    @db.VarChar(50)
+  usuario_reposicion String?   @db.VarChar(50)
+  corte_activo       Int?
+}
+
+model la_documentos_agua {
+  id                 Int                               @id @default(autoincrement())
+  id_parcela         Int
+  tipo_documento     la_documentos_agua_tipo_documento
+  version            String?                           @db.VarChar(50)
+  archivo            String                            @db.VarChar(255)
+  fecha_subida       DateTime?                         @default(now()) @db.DateTime(0)
+  subido_por         Int?
+  rut_responsable    String?                           @db.VarChar(12)
+  nombre_responsable String?                           @db.VarChar(100)
+  fecha_documento    DateTime?                         @db.Date
+  vigente            Boolean?                          @default(true)
+  sys_parcelas       sys_parcelas                      @relation(fields: [id_parcela], references: [id_parcela], onUpdate: Restrict, map: "la_documentos_agua_ibfk_1")
+  usuarios           usuarios?                         @relation(fields: [subido_por], references: [Id_Ejecutivo], onDelete: Restrict, onUpdate: Restrict, map: "la_documentos_agua_ibfk_2")
+
+  @@index([id_parcela], map: "id_parcela")
+  @@index([subido_por], map: "subido_por")
+}
+
+model la_lecturas_agua {
+  id_lectura           Int       @id @default(autoincrement())
+  valor_lectura        Decimal?  @db.Decimal(10, 3)
+  parcela              String?   @db.VarChar(100)
+  id_contrato          Int?
+  fecha_lectura        DateTime? @db.DateTime(0)
+  ingresado_por        Int?
+  dif_lectura_anterior Decimal?  @db.Decimal(10, 3)
+  link_imagen          String?   @db.VarChar(255)
+  fecha                DateTime? @db.Date
+  comentarios          String?   @db.VarChar(255)
+
+  @@unique([parcela, fecha], map: "parcela")
+}
+
+model la_lecturas_luz {
+  id_lectura           Int       @id @default(autoincrement())
+  valor_lectura        Decimal?  @db.Decimal(10, 3)
+  parcela              String?   @db.VarChar(100)
+  id_contrato          Int?
+  fecha_lectura        DateTime? @db.DateTime(0)
+  ingresado_por        Int?
+  dif_lectura_anterior Decimal?  @db.Decimal(10, 3)
+  link_imagen          String?   @db.VarChar(255)
+  fecha                DateTime? @db.Date
+  comentarios          String?   @db.VarChar(255)
+
+  @@unique([parcela, fecha], map: "parcela")
+}
+
+model la_log_actividades {
+  id_log         Int       @id @default(autoincrement())
+  fecha_hora     DateTime? @db.DateTime(0)
+  tipo_actividad String?   @db.VarChar(40)
+  usuario        Int?
+  descripcion    String?   @db.VarChar(1000)
+}
+
+model la_medidor_contrato_agua {
+  id_med_con        Int       @id @default(autoincrement())
+  id_contrato       Int       @default(0)
+  num_medidor       String    @default("0") @db.VarChar(30)
+  fecha_instalacion DateTime? @db.DateTime(0)
+  fecha_baja        DateTime? @db.DateTime(0)
+  motivo_baja       String?   @db.VarChar(500)
+  activo            Int       @default(1)
+  corte_activo      Int?      @default(0)
+}
+
+model la_medidor_contrato_luz {
+  id_med_con        Int       @id @default(autoincrement())
+  id_contrato       Int       @default(0)
+  num_medidor       String    @default("0") @db.VarChar(50)
+  fecha_instalacion DateTime? @db.DateTime(0)
+  fecha_baja        DateTime? @db.DateTime(0)
+  motivo_baja       String?   @db.VarChar(500)
+  activo            Int       @default(1)
+  corte_activo      Int?      @default(0)
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model la_tarifario {
+  metros_cubicos_n Int?
+  metros_cubicos_c Int?
+  valor_uf         Decimal? @db.Decimal(10, 3)
+  nombre_cobro     String?  @db.VarChar(255)
+  proyecto         Int?
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model la_tarifario_luz {
+  kw_n         Int?
+  kw_c         Int?
+  valor_pesos  Decimal? @db.Decimal(10, 4)
+  nombre_cobro String?  @db.VarChar(255)
+  proyecto     Int?
+
+  @@ignore
+}
+
+model liquidaciones {
+  id_liquidacion   Int       @id @default(autoincrement())
+  monto            Float?    @db.Float
+  id_usuario       Int?
+  motivo           String?   @db.VarChar(50)
+  comentarios      String?   @db.VarChar(255)
+  id_cuota         Int?
+  parcela          String?   @db.VarChar(100)
+  fecha_aplicacion DateTime? @db.DateTime(0)
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model liquidadas_20240723 {
+  id_deuda     Int       @default(0)
+  id_pagare    Float     @default(0)
+  Parcela      String?   @db.VarChar(255)
+  fecha_pagare DateTime? @db.Date
+  deuda_uf     Decimal?  @db.Decimal(14, 8)
+  proyecto     String?   @db.VarChar(255)
+  estado_cuota Int?
+  motivo       String    @db.VarChar(34)
+
+  @@ignore
+}
+
+model log_eventos {
+  id_log             Int       @id @default(autoincrement())
+  tipo_accion        String?   @db.VarChar(255)
+  descripcion_accion String?   @db.VarChar(255)
+  fechahora          DateTime? @db.DateTime(0)
+  usuario            Int?
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model masterSoftland {
+  num_comprobamte      String? @db.VarChar(255)
+  fecha_comprobante    String? @db.VarChar(255)
+  CpbAno               String? @db.VarChar(255)
+  CpbMes               String? @db.VarChar(255)
+  MovNum               String? @db.VarChar(255)
+  cuenta               String? @db.VarChar(255)
+  nombre_cuenta        String? @db.VarChar(255)
+  flujo_efectivo       String? @db.VarChar(255)
+  cod_detgastos        String? @db.VarChar(255)
+  detgastos            String? @db.VarChar(255)
+  MovDgCant            String? @db.VarChar(255)
+  cod_ccosto           String? @db.VarChar(255)
+  ccosto               String? @db.VarChar(255)
+  rut_nodv             String? @db.VarChar(255)
+  rut_dv               String? @db.VarChar(255)
+  nombre_rut           String? @db.VarChar(255)
+  doc_conciliacion     String? @db.VarChar(255)
+  num_doc_conciliacion String? @db.VarChar(255)
+  TtdCod               String? @db.VarChar(255)
+  nombre_doc           String? @db.VarChar(255)
+  NumDoc               BigInt?
+  fecha_emision        String? @db.VarChar(255)
+  fecha_venc           String? @db.VarChar(255)
+  glosa_mov            String? @db.VarChar(255)
+  debe                 BigInt?
+  haber                BigInt?
+  cod_moneda           String? @db.VarChar(255)
+  equiv_moneda         String? @db.VarChar(255)
+  debe_moneda_ad       String? @db.VarChar(255)
+  haber_moneda_ad      String? @db.VarChar(255)
+  doc_referencia       String? @db.VarChar(255)
+  num_doc_referencia   String? @db.VarChar(255)
+  Empresa              String? @db.VarChar(255)
+  Rut_empresa          String? @db.VarChar(255)
+  info_comp            String? @db.VarChar(255)
+  estado_comprobante   String? @db.VarChar(10)
+  nombre_empresa       String? @db.VarChar(255)
+  clasificacion        String? @db.VarChar(255)
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model mday_seguimiento_ventas {
+  parcela                                String? @db.VarChar(255)
+  tablero                                String? @db.VarChar(255)
+  vacio                                  String? @db.VarChar(255)
+  Propietario                            String? @db.VarChar(255)
+  Rut_1                                  String? @db.VarChar(255)
+  Direcci_n_propietario                  String? @map("Dirección_propietario") @db.VarChar(255)
+  Email_propietario                      String? @db.VarChar(255)
+  Tel_fono_propietario                   String? @map("Teléfono_propietario") @db.VarChar(255)
+  Propietario_2                          String? @db.VarChar(255)
+  Rut_2                                  String? @db.VarChar(255)
+  Tel_fono_propietario_2                 String? @map("Teléfono_propietario_2") @db.VarChar(255)
+  Email_propietario_2                    String? @db.VarChar(255)
+  Direcci_n_propietario_2                String? @map("Dirección_propietario_2") @db.VarChar(255)
+  Valor_Parcela                          String? @db.VarChar(255)
+  Fecha_C_O_                             String? @map("Fecha_C.O.") @db.VarChar(255)
+  Estado_pagos_para_Tabla_Amortizaci_n   String? @map("Estado_pagos_para_Tabla_Amortización") @db.VarChar(255)
+  N__de_cuotas_pagar_                    String? @map("N°_de_cuotas_pagaré") @db.VarChar(255)
+  D_as_disponibles_para_confecci_n_PCV   String? @map("Días_disponibles_para_confección_PCV") @db.VarChar(255)
+  Advertencia_pagos_incompletos          String? @db.VarChar(255)
+  Tabla_amoritzacion                     String? @db.VarChar(255)
+  Reserva                                String? @db.VarChar(255)
+  Forma_de_Pago                          String? @db.VarChar(255)
+  Banco                                  String? @db.VarChar(255)
+  CV_pagada_                             String? @map("CV_pagada?") @db.VarChar(255)
+  Last_Update                            String? @db.VarChar(255)
+  rea                                    String? @map("Área") @db.VarChar(255)
+  Responsable_escriturar                 String? @db.VarChar(255)
+  Plazo                                  String? @db.VarChar(255)
+  Fecha_vencimiento_primera_cuota_Pagar_ String? @map("Fecha_vencimiento_primera_cuota_Pagaré") @db.VarChar(255)
+  Estado_firma_cliente                   String? @db.VarChar(255)
+  Estado_G_O__Manager                    String? @map("Estado_G.O._Manager") @db.VarChar(255)
+  Fecha_firma_cliente                    String? @db.VarChar(255)
+  Firma_FMS                              String? @db.VarChar(255)
+  NOTARIA                                String? @db.VarChar(255)
+  Con_Banco_Alzante                      String? @db.VarChar(255)
+  Datos_inscripci_n_CBR                  String? @map("Datos_inscripción_CBR") @db.VarChar(255)
+  F__CBR                                 String? @map("F._CBR") @db.VarChar(255)
+  Pagada__                               String? @map("Pagada_$") @db.VarChar(255)
+  Timeline___Start                       String? @map("Timeline_-_Start") @db.VarChar(255)
+  Timeline___End                         String? @map("Timeline_-_End") @db.VarChar(255)
+  Id__de_elemento                        String? @map("Id._de_elemento") @db.VarChar(255)
+  Fecha_en_cobranza_o_posible_caida      String? @db.VarChar(255)
+  Creaci_n_de_registro                   String? @map("Creación_de_registro") @db.VarChar(255)
+  Fecha_limite                           String? @db.VarChar(255)
+  Responsable_CA                         String? @db.VarChar(255)
+  Asignacion_CA                          String? @db.VarChar(255)
+  Mes_cierre_COF                         String? @db.VarChar(255)
+  Mes_pago_venta                         String? @db.VarChar(255)
+  Estado_comisi_n                        String? @map("Estado_comisión") @db.VarChar(255)
+  Fecha_solicitud_T_A_                   String? @map("Fecha_solicitud_T.A.") @db.VarChar(255)
+  Monto_manager                          String? @db.VarChar(255)
+  Fecha_revisi_n_manager                 String? @map("Fecha_revisión_manager") @db.VarChar(255)
+  Monto_monday                           String? @db.VarChar(255)
+  Fecha_revisi_n_monday                  String? @map("Fecha_revisión_monday") @db.VarChar(255)
+  Seguimiento_de_tiempo                  String? @db.VarChar(255)
+  Numeraci_n_autom_tica                  String? @map("Numeración_automática") @db.VarChar(255)
+  ejecutivo_call                         String? @db.VarChar(255)
+  Supervisora                            String? @db.VarChar(255)
+  Gestion_CM                             String? @db.VarChar(255)
+
+  @@ignore
+}
+
+model medios_pago {
+  id_medio_pago  Int     @id @default(autoincrement())
+  medio_pago     String? @db.VarChar(100)
+  documento_sl   String? @db.VarChar(5)
+  sist_cobranzas Int?
+  sist_co        Int?
+}
+
+model notificaciones {
+  id              Int       @id @default(autoincrement())
+  parcela         String?   @db.VarChar(20)
+  fecha           DateTime? @db.Date
+  mail_notificado String?   @db.VarChar(100)
+  id_pago         Int?
+  total_pagado    Int?
+  medio_pago      String?   @db.VarChar(100)
+  banco_origen    String?   @db.VarChar(100)
+  nombre_pagador  String?   @db.VarChar(100)
+  proyecto        String?   @db.VarChar(100)
+  fecha_envio     DateTime? @db.DateTime(0)
+  enviada_por     Int?
+}
+
+model notificaciones_abono {
+  id              Int       @id @default(autoincrement())
+  parcela         String?   @db.VarChar(20)
+  fecha           DateTime? @db.Date
+  mail_notificado String?   @db.VarChar(100)
+  id_pago         Int?
+  total_pagado    Int?
+  medio_pago      String?   @db.VarChar(100)
+  banco_origen    String?   @db.VarChar(100)
+  nombre_pagador  String?   @db.VarChar(100)
+  proyecto        String?   @db.VarChar(100)
+}
+
+model notificaciones_test {
+  id              Int       @id @default(autoincrement())
+  parcela         String?   @db.VarChar(20)
+  fecha           DateTime? @db.Date
+  mail_notificado String?   @db.VarChar(100)
+  id_pago         Int?
+  total_pagado    Int?
+  medio_pago      String?   @db.VarChar(100)
+  banco_origen    String?   @db.VarChar(100)
+  nombre_pagador  String?   @db.VarChar(100)
+  proyecto        String?   @db.VarChar(100)
+}
+
+model pa_parcelas_servicios {
+  id_pa                                                      Int           @id @default(autoincrement())
+  parcela                                                    String?       @unique(map: "parcela") @db.VarChar(255)
+  pa_gastos_comunes                                          Int?
+  fecha_creacion_pa_gc                                       DateTime?     @db.Date
+  pa_agua                                                    Int?
+  fecha_creacion_pa_agua                                     DateTime?     @db.Date
+  pa_electricidad                                            Int?
+  fecha_creacion_pa_elec                                     DateTime?     @db.Date
+  pa_membresia                                               Int?
+  fecha_creacion_pa_memb                                     DateTime?     @db.Date
+  id_parcela                                                 Int?
+  tipo_pac_pa_parcelas_servicios_pa_gastos_comunesTotipo_pac tipo_pac?     @relation("pa_parcelas_servicios_pa_gastos_comunesTotipo_pac", fields: [pa_gastos_comunes], references: [id_pacpat], map: "pa_parcelas_servicios_ibfk_1")
+  tipo_pac_pa_parcelas_servicios_pa_aguaTotipo_pac           tipo_pac?     @relation("pa_parcelas_servicios_pa_aguaTotipo_pac", fields: [pa_agua], references: [id_pacpat], map: "pa_parcelas_servicios_ibfk_2")
+  tipo_pac_pa_parcelas_servicios_pa_electricidadTotipo_pac   tipo_pac?     @relation("pa_parcelas_servicios_pa_electricidadTotipo_pac", fields: [pa_electricidad], references: [id_pacpat], map: "pa_parcelas_servicios_ibfk_3")
+  tipo_pac_pa_parcelas_servicios_pa_membresiaTotipo_pac      tipo_pac?     @relation("pa_parcelas_servicios_pa_membresiaTotipo_pac", fields: [pa_membresia], references: [id_pacpat], map: "pa_parcelas_servicios_ibfk_4")
+  sys_parcelas                                               sys_parcelas? @relation(fields: [id_parcela], references: [id_parcela], map: "pa_parcelas_servicios_ibfk_5")
+
+  @@index([id_parcela], map: "id_parcela")
+  @@index([pa_agua], map: "pa_agua")
+  @@index([pa_electricidad], map: "pa_electricidad")
+  @@index([pa_gastos_comunes], map: "pa_gastos_comunes")
+  @@index([pa_membresia], map: "pa_membresia")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model pagare_parcela {
+  id_pagare                                       Int                     @id @default(autoincrement())
+  Parcela                                         String?                 @db.VarChar(255)
+  estado                                          Int?                    @default(0)
+  fecha_creacion                                  DateTime?               @db.Date
+  ultima_modificacion                             DateTime?               @db.DateTime(0)
+  codigo_pagare                                   String?                 @db.VarChar(100)
+  comentarios_pagare                              String?                 @db.VarChar(255)
+  estado_cobranza                                 Int?
+  fecha_termino                                   DateTime?               @db.Date
+  fecha_carga                                     DateTime?               @db.DateTime(0)
+  subido_por                                      Int?
+  pacpat_activo                                   Int?
+  fecha_creacion_pago_auto                        DateTime?               @db.Date
+  dia_cargo                                       Int?
+  cuotas_morosas                                  Int?
+  cuotas_cobradas                                 Int?
+  estado_cuotas                                   String?                 @db.VarChar(200)
+  ggoo                                            Int?
+  id_parcela                                      Int?
+  id_pcv                                          String?                 @db.VarChar(50)
+  mod_pcv_cvh                                     Int?                    @default(0)
+  pa_ggcc                                         Int?
+  pa_ggcc_fec_inicio                              DateTime?               @db.Date
+  pa_agua                                         Int?
+  pa_agua_fec_inicio                              DateTime?               @db.Date
+  pa_elec                                         Int?
+  pa_elec_fec_inicio                              DateTime?               @db.Date
+  pa_club_house                                   Int?
+  pa_club_house_inicio                            DateTime?               @db.Date
+  tipo_pac                                        String?                 @db.VarChar(255)
+  cob_comite_decisiones                           cob_comite_decisiones[]
+  estado_pagare                                   estado_pagare?          @relation(fields: [estado], references: [id_estado], map: "pagare_parcela_ibfk_1")
+  estado_cobranza_pagare                          estado_cobranza_pagare? @relation(fields: [estado_cobranza], references: [id_estado], map: "pagare_parcela_ibfk_2")
+  tipo_pac_pagare_parcela_pacpat_activoTotipo_pac tipo_pac?               @relation("pagare_parcela_pacpat_activoTotipo_pac", fields: [pacpat_activo], references: [id_pacpat], map: "pagare_parcela_ibfk_3")
+  tipo_pac_pagare_parcela_pa_ggccTotipo_pac       tipo_pac?               @relation("pagare_parcela_pa_ggccTotipo_pac", fields: [pa_ggcc], references: [id_pacpat], map: "pagare_parcela_ibfk_4")
+  tipo_pac_pagare_parcela_pa_aguaTotipo_pac       tipo_pac?               @relation("pagare_parcela_pa_aguaTotipo_pac", fields: [pa_agua], references: [id_pacpat], map: "pagare_parcela_ibfk_5")
+  tipo_pac_pagare_parcela_pa_elecTotipo_pac       tipo_pac?               @relation("pagare_parcela_pa_elecTotipo_pac", fields: [pa_elec], references: [id_pacpat], map: "pagare_parcela_ibfk_6")
+  tipo_pac_pagare_parcela_pa_club_houseTotipo_pac tipo_pac?               @relation("pagare_parcela_pa_club_houseTotipo_pac", fields: [pa_club_house], references: [id_pacpat], map: "pagare_parcela_ibfk_7")
+
+  @@index([estado], map: "estado")
+  @@index([estado_cobranza], map: "estado_cobranza")
+  @@index([id_pagare], map: "id_pagare")
+  @@index([pa_agua], map: "pa_agua")
+  @@index([pa_club_house], map: "pa_club_house")
+  @@index([pa_elec], map: "pa_elec")
+  @@index([pa_ggcc], map: "pa_ggcc")
+  @@index([pacpat_activo], map: "pacpat_activo")
+}
+
+model pago_adelantado {
+  id_pago           Int       @id @default(autoincrement())
+  fecha_proceso     DateTime? @db.DateTime(0)
+  parcela           String?   @db.VarChar(10)
+  monto_pago        Int?
+  fecha_transaccion DateTime? @db.Date
+  id_medio_pago     Int?
+  id_banco_origen   Int?
+  id_banco_dedstino Int?
+  mail_notificacion String?   @db.VarChar(100)
+  pagado_por        Int?
+  ingresado_por     Int?
+  codigo_trx        String?   @db.VarChar(255)
+  comentarios       String?   @db.VarChar(255)
+  monto_uf          Decimal?  @db.Decimal(12, 8)
+  id_pagare         Int?
+
+  @@index([fecha_transaccion], map: "fecha_transaccion")
+  @@index([id_banco_dedstino], map: "id_banco_dedstino")
+  @@index([id_banco_origen], map: "id_banco_origen")
+  @@index([id_medio_pago], map: "id_medio_pago")
+  @@index([parcela], map: "parcela")
+}
+
+model pago_cuotas {
+  id_pago_cuota  Int             @id @default(autoincrement())
+  id_cuota       Int?
+  monto_pago     Int?
+  estado         Int?
+  id_pago        Int?
+  monto_uf       Decimal?        @db.Decimal(12, 8)
+  pagos          pagos?          @relation(fields: [id_pago], references: [id_pago], onDelete: Cascade, map: "pago_cuotas_ibfk_1")
+  cobranzas_base cobranzas_base? @relation(fields: [id_cuota], references: [id_deuda], onDelete: Cascade, map: "pago_cuotas_ibfk_2")
+
+  @@index([estado], map: "estado")
+  @@index([id_cuota], map: "id_cuota")
+  @@index([id_pago], map: "id_pago")
+}
+
+model pago_cuotas_cheque {
+  id_pago_cuota    Int               @id @default(autoincrement())
+  id_cuota         Int?
+  monto_pago       Int?
+  estado           Int?
+  id_pago          Int?
+  monto_uf         Decimal?          @db.Decimal(12, 8)
+  pagos_cheque_tmp pagos_cheque_tmp? @relation(fields: [id_pago], references: [id_pago], onDelete: Cascade, map: "pago_cuotas_cheque_ibfk_1")
+  cobranzas_base   cobranzas_base?   @relation(fields: [id_cuota], references: [id_deuda], onDelete: Cascade, map: "pago_cuotas_cheque_ibfk_2")
+
+  @@index([estado], map: "estado")
+  @@index([id_cuota], map: "id_cuota")
+  @@index([id_pago], map: "id_pago")
+}
+
+model pago_cuotas_go {
+  id_pago_cuota Int        @id @default(autoincrement())
+  id_cuota      Int?
+  monto_pago    Int?
+  estado        Int?
+  id_pago       Int?
+  monto_uf      Decimal?   @db.Decimal(12, 8)
+  cuotas_go     cuotas_go? @relation(fields: [id_cuota], references: [id_cuota_go], map: "pago_cuotas_go_ibfk_1")
+  pagos_go      pagos_go?  @relation(fields: [id_pago], references: [id_pago], onDelete: Restrict, onUpdate: Restrict, map: "pago_cuotas_go_ibfk_2")
+
+  @@index([estado], map: "estado")
+  @@index([id_cuota], map: "id_cuota")
+  @@index([id_pago], map: "id_pago")
+}
+
+model pago_cuotas_go_cheque {
+  id_pago_cuota       Int                  @id @default(autoincrement())
+  id_cuota            Int?
+  monto_pago          Int?
+  estado              Int?
+  id_pago             Int?
+  monto_uf            Decimal?             @db.Decimal(12, 8)
+  cuotas_go           cuotas_go?           @relation(fields: [id_cuota], references: [id_cuota_go], map: "pago_cuotas_go_cheque_ibfk_1")
+  pagos_cheque_go_tmp pagos_cheque_go_tmp? @relation(fields: [id_pago], references: [id_pago], map: "pago_cuotas_go_cheque_ibfk_2")
+
+  @@index([estado], map: "estado")
+  @@index([id_cuota], map: "id_cuota")
+  @@index([id_pago], map: "id_pago")
+}
+
+model pago_cuotas_pp {
+  id_pago_cuota    Int               @id @default(autoincrement())
+  id_cuota         Int?
+  monto_pago       Int?
+  estado           Int?
+  id_pago          Int?
+  monto_uf         Decimal?          @db.Decimal(12, 8)
+  pagos_pp         pagos_pp?         @relation(fields: [id_pago], references: [id_pago], onDelete: Cascade, map: "pago_cuotas_pp_ibfk_1")
+  cuotas_plan_pago cuotas_plan_pago? @relation(fields: [id_cuota], references: [id_cuota_pp], map: "pago_cuotas_pp_ibfk_2")
+
+  @@index([estado], map: "estado")
+  @@index([id_cuota], map: "id_cuota")
+  @@index([id_pago], map: "id_pago")
+}
+
+model pago_origenes {
+  id_origen_pago Int        @id @default(autoincrement())
+  nombre_origen  String?    @db.VarChar(255)
+  pagos          pagos[]
+  pagos_go       pagos_go[]
+  pagos_pp       pagos_pp[]
+}
+
+model pagos {
+  id_pago                      Int               @id @default(autoincrement())
+  fecha_proceso                DateTime?         @db.DateTime(0)
+  parcela                      String?           @db.VarChar(30)
+  monto_pago                   Int?
+  abono_utilizado              Int?
+  fecha_transaccion            DateTime?         @db.Date
+  id_medio_pago                Int?
+  id_banco_origen              Int?
+  id_banco_dedstino            Int?
+  mail_notificacion            String?           @db.VarChar(100)
+  pagado_por                   Int?
+  ingresado_por                Int?
+  codigo_trx                   String?           @db.VarChar(255)
+  comentarios                  String?           @db.VarChar(255)
+  monto_uf                     Decimal?          @db.Decimal(12, 8)
+  agua                         Int?
+  clubhouse                    Int?
+  credito                      Int?
+  ggcc                         Int?
+  validado                     Int?
+  id_pagare                    Int?
+  num_comprobante_contabilidad Int?
+  fecha_validacion             DateTime?         @db.DateTime(0)
+  origen_pago                  Int?
+  fecha_deposito_toku          DateTime?         @db.Date
+  id_payout_externo            String?           @db.VarChar(255)
+  total_deposito               Int?
+  correlativo_conciliacion     Int?
+  fecha_contable               DateTime?         @db.Date
+  pago_cuotas                  pago_cuotas[]
+  pago_origenes                pago_origenes?    @relation(fields: [origen_pago], references: [id_origen_pago], map: "pagos_ibfk_1")
+  pagos_favor                  pagos_favor[]
+  pagos_intereses              pagos_intereses[] @ignore
+
+  @@unique([fecha_proceso, parcela, monto_pago], map: "fecha_proceso")
+  @@index([fecha_transaccion], map: "fecha_transaccion")
+  @@index([id_banco_dedstino], map: "id_banco_dedstino")
+  @@index([id_banco_origen], map: "id_banco_origen")
+  @@index([id_medio_pago], map: "id_medio_pago")
+  @@index([origen_pago], map: "origen_pago")
+  @@index([parcela], map: "parcela")
+}
+
+model pagos_cheque_go_tmp {
+  id_pago                      Int                     @id @default(autoincrement())
+  fecha_proceso                DateTime?               @db.DateTime(0)
+  parcela                      String?                 @db.VarChar(10)
+  monto_pago                   Int?
+  abono_utilizado              Int?
+  fecha_transaccion            DateTime?               @db.Date
+  id_medio_pago                Int?
+  id_banco_origen              Int?
+  id_banco_dedstino            Int?
+  mail_notificacion            String?                 @db.VarChar(100)
+  pagado_por                   Int?
+  ingresado_por                Int?
+  codigo_trx                   String?                 @db.VarChar(255)
+  comentarios                  String?                 @db.VarChar(255)
+  monto_uf                     Decimal?                @db.Decimal(12, 8)
+  agua                         Int?
+  clubhouse                    Int?
+  credito                      Int?
+  ggcc                         Int?
+  validado                     Int?
+  id_pagare                    Int?
+  num_comprobante_contabilidad Int?
+  fecha_actualizacion_estado   DateTime?               @db.DateTime(0)
+  fecha_cobro                  DateTime?               @db.Date
+  estado_cheque                Int?
+  obs_cheque                   String?                 @db.VarChar(255)
+  fecha_proceso_real           DateTime?               @db.Date
+  pago_cuotas_go_cheque        pago_cuotas_go_cheque[]
+
+  @@unique([fecha_proceso, parcela], map: "fecha_proceso")
+  @@index([fecha_transaccion], map: "fecha_transaccion")
+  @@index([id_banco_dedstino], map: "id_banco_dedstino")
+  @@index([id_banco_origen], map: "id_banco_origen")
+  @@index([id_medio_pago], map: "id_medio_pago")
+  @@index([parcela], map: "parcela")
+}
+
+model pagos_cheque_tmp {
+  id_pago                      Int                      @id @default(autoincrement())
+  fecha_proceso                DateTime?                @db.DateTime(0)
+  parcela                      String?                  @db.VarChar(10)
+  monto_pago                   Int?
+  abono_utilizado              Int?
+  fecha_transaccion            DateTime?                @db.Date
+  id_medio_pago                Int?
+  id_banco_origen              Int?
+  id_banco_dedstino            Int?
+  mail_notificacion            String?                  @db.VarChar(100)
+  pagado_por                   Int?
+  ingresado_por                Int?
+  codigo_trx                   String?                  @db.VarChar(255)
+  comentarios                  String?                  @db.VarChar(255)
+  monto_uf                     Decimal?                 @db.Decimal(12, 8)
+  agua                         Int?
+  clubhouse                    Int?
+  credito                      Int?
+  ggcc                         Int?
+  validado                     Int?
+  id_pagare                    Int?
+  num_comprobante_contabilidad Int?
+  fecha_actualizacion_estado   DateTime?                @db.DateTime(0)
+  fecha_cobro                  DateTime?                @db.Date
+  estado_cheque                Int?
+  obs_cheque                   String?                  @db.VarChar(255)
+  fecha_proceso_real           DateTime?                @db.Date
+  fecha_contable               DateTime?                @db.Date
+  pago_cuotas_cheque           pago_cuotas_cheque[]
+  pagos_intereses_cheque       pagos_intereses_cheque[] @ignore
+
+  @@unique([fecha_proceso, parcela], map: "fecha_proceso")
+  @@index([fecha_transaccion], map: "fecha_transaccion")
+  @@index([id_banco_dedstino], map: "id_banco_dedstino")
+  @@index([id_banco_origen], map: "id_banco_origen")
+  @@index([id_medio_pago], map: "id_medio_pago")
+  @@index([parcela], map: "parcela")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model pagos_cuota_uf {
+  id_cuota          Int?
+  monto_pago        Float?    @db.Float
+  valorUF           Float?    @db.Float
+  fecha_transaccion DateTime? @db.Date
+  pago_uf           Float?
+  parcela           String?   @db.VarChar(10)
+  id_pago           Int       @default(0)
+  Nombre            String?   @db.VarChar(255)
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model pagos_cuota_uf_total {
+  id_cuota       Int?
+  total_uf_cuota Float?
+  id_pago        Int    @default(0)
+
+  @@ignore
+}
+
+model pagos_favor {
+  id_favor          Int       @id @default(autoincrement())
+  id_pago           Int?
+  utilizado         Int?
+  monto_favor       Int?
+  fecha_utilizacion DateTime? @db.Date
+  monto_favor_uf    Decimal?  @db.Decimal(12, 8)
+  id_pagare         Int?
+  pagos             pagos?    @relation(fields: [id_pago], references: [id_pago], onDelete: Cascade, map: "pagos_favor_ibfk_1")
+
+  @@index([id_pago], map: "id_pago")
+}
+
+model pagos_go {
+  id_pago                      Int                         @id @default(autoincrement())
+  fecha_proceso                DateTime?                   @db.DateTime(0)
+  parcela                      String?                     @db.VarChar(10)
+  monto_pago                   Int?
+  abono_utilizado              Int?
+  fecha_transaccion            DateTime?                   @db.Date
+  id_medio_pago                Int?
+  id_banco_origen              Int?
+  id_banco_dedstino            Int?
+  mail_notificacion            String?                     @db.VarChar(100)
+  pagado_por                   Int?
+  ingresado_por                Int?
+  codigo_trx                   String?                     @db.VarChar(255)
+  comentarios                  String?                     @db.VarChar(255)
+  monto_uf                     Decimal?                    @db.Decimal(12, 8)
+  agua                         Int?
+  clubhouse                    Int?
+  credito                      Int?
+  ggcc                         Int?
+  validado                     Int?
+  id_pagare                    Int?
+  num_comprobante_contabilidad Int?
+  fecha_validacion             DateTime?                   @db.DateTime(0)
+  origen_pago                  Int?
+  fecha_contable               DateTime?                   @db.Date
+  pago_cuotas_go               pago_cuotas_go[]
+  pago_origenes                pago_origenes?              @relation(fields: [origen_pago], references: [id_origen_pago], map: "pagos_go_ibfk_1")
+  pagos_intereses_go           pagos_intereses_go[]        @ignore
+  pagos_intereses_go_cheque    pagos_intereses_go_cheque[] @ignore
+
+  @@unique([fecha_proceso, parcela], map: "fecha_proceso")
+  @@index([fecha_transaccion], map: "fecha_transaccion")
+  @@index([id_banco_dedstino], map: "id_banco_dedstino")
+  @@index([id_banco_origen], map: "id_banco_origen")
+  @@index([id_medio_pago], map: "id_medio_pago")
+  @@index([origen_pago], map: "origen_pago")
+  @@index([parcela], map: "parcela")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model pagos_intereses {
+  id_pago     Int?
+  monto_pago  Int?
+  comentarios String?  @db.VarChar(255)
+  monto_uf    Decimal? @db.Decimal(12, 8)
+  id_payout   String?  @db.VarChar(255)
+  pagos       pagos?   @relation(fields: [id_pago], references: [id_pago], onDelete: Cascade, map: "pagos_intereses_ibfk_1")
+
+  @@index([id_pago], map: "id_pago")
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model pagos_intereses_cheque {
+  id_pago          Int?
+  monto_pago       Int?
+  comentarios      String?           @db.VarChar(255)
+  monto_uf         Decimal?          @db.Decimal(12, 8)
+  pagos_cheque_tmp pagos_cheque_tmp? @relation(fields: [id_pago], references: [id_pago], onDelete: Cascade, map: "pagos_intereses_cheque_ibfk_1")
+
+  @@index([id_pago], map: "id_pago")
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model pagos_intereses_faltantes {
+  id_pago     Int?
+  monto_pago  Int?
+  comentarios String?  @db.VarChar(255)
+  monto_uf    Decimal? @db.Decimal(12, 8)
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model pagos_intereses_go {
+  id_pago     Int?
+  monto_pago  Int?
+  comentarios String?   @db.VarChar(255)
+  monto_uf    Decimal?  @db.Decimal(12, 8)
+  pagos_go    pagos_go? @relation(fields: [id_pago], references: [id_pago], map: "pagos_intereses_go_ibfk_1")
+
+  @@index([id_pago], map: "id_pago")
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model pagos_intereses_go_cheque {
+  id_pago     Int?
+  monto_pago  Int?
+  comentarios String?   @db.VarChar(255)
+  monto_uf    Decimal?  @db.Decimal(12, 8)
+  pagos_go    pagos_go? @relation(fields: [id_pago], references: [id_pago], map: "pagos_intereses_go_cheque_ibfk_1")
+
+  @@index([id_pago], map: "id_pago")
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model pagos_intereses_pp {
+  id_pago     Int?
+  monto_pago  Int?
+  comentarios String?   @db.VarChar(255)
+  monto_uf    Decimal?  @db.Decimal(12, 8)
+  pagos_pp    pagos_pp? @relation(fields: [id_pago], references: [id_pago], onDelete: Cascade, map: "pagos_intereses_pp_ibfk_1")
+
+  @@index([id_pago], map: "id_pago")
+  @@ignore
+}
+
+model pagos_modificaciones {
+  id_modificacion    Int       @id @default(autoincrement())
+  id_pago            Int?
+  ant_bco_origen     Int?
+  nvo_bco_origen     Int?
+  ant_bco_dest       Int?
+  nvo_bco_dest       Int?
+  ant_medio          Int?
+  nvo_medio          Int?
+  ant_comentario     String?   @db.VarChar(255)
+  nvo_comentario     String?   @db.VarChar(255)
+  modificado_por     Int?
+  fecha_modificacion DateTime? @db.DateTime(0)
+}
+
+model pagos_pp {
+  id_pago                      Int                  @id @default(autoincrement())
+  fecha_proceso                DateTime?            @db.DateTime(0)
+  parcela                      String?              @db.VarChar(10)
+  monto_pago                   Int?
+  abono_utilizado              Int?
+  fecha_transaccion            DateTime?            @db.Date
+  id_medio_pago                Int?
+  id_banco_origen              Int?
+  id_banco_dedstino            Int?
+  mail_notificacion            String?              @db.VarChar(100)
+  pagado_por                   Int?
+  ingresado_por                Int?
+  codigo_trx                   String?              @db.VarChar(255)
+  comentarios                  String?              @db.VarChar(255)
+  monto_uf                     Decimal?             @db.Decimal(12, 8)
+  agua                         Int?
+  clubhouse                    Int?
+  credito                      Int?
+  ggcc                         Int?
+  validado                     Int?
+  id_pagare                    Int?
+  num_comprobante_contabilidad Int?
+  fecha_validacion             DateTime?            @db.DateTime(0)
+  origen_pago                  Int?
+  correlativo_conciliacion     Int?
+  fecha_contable               DateTime?            @db.Date
+  pago_cuotas_pp               pago_cuotas_pp[]
+  pagos_intereses_pp           pagos_intereses_pp[] @ignore
+  pago_origenes                pago_origenes?       @relation(fields: [origen_pago], references: [id_origen_pago], map: "pagos_pp_ibfk_1")
+
+  @@unique([fecha_proceso, parcela], map: "fecha_proceso")
+  @@index([fecha_transaccion], map: "fecha_transaccion")
+  @@index([id_banco_dedstino], map: "id_banco_dedstino")
+  @@index([id_banco_origen], map: "id_banco_origen")
+  @@index([id_medio_pago], map: "id_medio_pago")
+  @@index([origen_pago], map: "origen_pago")
+  @@index([parcela], map: "parcela")
+}
+
+model parametros {
+  id_parametro       Int     @id @default(autoincrement())
+  nombre             String? @db.VarChar(100)
+  desc               String? @db.VarChar(255)
+  valor              Float?  @db.Float
+  activo             Int?
+  query_modificacion String? @db.VarChar(255)
+}
+
+model parcelas {
+  Parcela   String  @id @db.VarChar(100)
+  proyecto  String  @db.VarChar(100)
+  ejecutivo String? @db.VarChar(255)
+
+  @@unique([Parcela, proyecto], map: "Parcela_2")
+  @@index([Parcela], map: "Parcela")
+  @@index([proyecto], map: "proyecto")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model parcelas_fechafirma {
+  parcela     String?   @db.VarChar(20)
+  fecha_corte DateTime? @db.Date
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model parcelas_rol {
+  parcela String? @db.VarChar(255)
+  rol     String? @db.VarChar(255)
+
+  @@index([parcela], map: "parcela")
+  @@ignore
+}
+
+model pcv_clientes_pcv {
+  id_relacion  Int       @id @default(autoincrement())
+  id_pcv       String?   @db.VarChar(100)
+  rut_cliente  Int?
+  relacion_pcv String?   @db.VarChar(255)
+  fecha_act    DateTime? @db.DateTime(0)
+  usuario_act  Int?
+  activo       Int?
+
+  @@unique([id_pcv, rut_cliente], map: "id_pcv")
+}
+
+model pcv_datos_pcv {
+  id_pcv        String    @id @db.VarChar(100)
+  id_co         String?   @db.VarChar(100)
+  fecha_ingreso DateTime? @db.DateTime(0)
+  ingresada_por Int?
+  notaria       Int?
+  estado        Int?
+  temp          Int?
+}
+
+model pcv_estados_pcv {
+  id_estado_pcv Int     @id @default(autoincrement())
+  estado        String? @db.VarChar(255)
+  activo        Int?
+}
+
+model plan_pago {
+  id_plan_pago     Int       @id @default(autoincrement())
+  estado_pp        Int?
+  fecha_creacion   DateTime? @db.DateTime(0)
+  creado_por       Int?
+  id_pagare        Int?
+  id_pago          Int?
+  activo           Int?
+  query_pago       String?   @db.VarChar(500)
+  cuotas_afectadas String?   @db.VarChar(255)
+}
+
+model pp_sim_plan_cuotas {
+  id_sim_cuota      Int                            @id @default(autoincrement())
+  id_simulacion     Int?
+  id_deuda_original Int?
+  num_cuota         String?                        @db.VarChar(50)
+  deuda_uf          Decimal?                       @db.Decimal(10, 2)
+  interes_uf        Decimal?                       @db.Decimal(10, 2)
+  original_uf       Decimal?                       @db.Decimal(10, 2)
+  fecha_vencimiento DateTime?                      @db.Date
+  estado_original   String?                        @db.VarChar(20)
+  deuda_uf_original Decimal?                       @db.Decimal(10, 2)
+  nueva_deuda_uf    Decimal?                       @db.Decimal(10, 2)
+  tipo_cuota        pp_sim_plan_cuotas_tipo_cuota? @default(sin_cambio)
+  pp_sim_plan_pago  pp_sim_plan_pago?              @relation(fields: [id_simulacion], references: [id_simulacion], onDelete: Restrict, onUpdate: Restrict, map: "pp_sim_plan_cuotas_ibfk_1")
+
+  @@index([id_simulacion], map: "id_simulacion")
+}
+
+model pp_sim_plan_pago {
+  id_simulacion       Int                  @id @default(autoincrement())
+  id_pagare           Int?
+  monto_abono         Decimal?             @db.Decimal(10, 2)
+  meses_abono         Int?
+  meses_redistrib     Int?
+  deuda_redistribuir  Decimal?             @db.Decimal(10, 2)
+  nueva_cuota         Decimal?             @db.Decimal(10, 2)
+  creado_por          Int?
+  fecha_creacion      DateTime?            @default(now()) @db.DateTime(0)
+  aplicado            Boolean?             @default(false)
+  fecha_formalizacion DateTime?            @db.DateTime(0)
+  formalizado_por     Int?
+  fecha_validez       DateTime?            @db.Date
+  pp_sim_plan_cuotas  pp_sim_plan_cuotas[]
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model propietarios {
+  Parcela              String? @db.VarChar(255)
+  Propietario          String? @db.VarChar(255)
+  Rut                  String? @db.VarChar(255)
+  actual               Int
+  id_pagare            Int?
+  motivo_desactivacion String? @db.VarChar(255)
+
+  @@unique([Parcela, Rut], map: "Parcela")
+  @@index([Parcela], map: "Parcela_2")
+  @@index([actual], map: "actual")
+  @@index([id_pagare], map: "id_pagare")
+  @@ignore
+}
+
+model proyectos {
+  id_proyecto         Int     @id
+  proyecto            String? @db.VarChar(255)
+  activo              Int?
+  elegible_asistencia Int?
+  ubicacion           String? @db.VarChar(100)
+  agua                Int?
+  luz                 Int?
+  ggcc                Int?
+  clubhouse           Int?
+  empresa             String? @db.VarChar(30)
+  cobrador            String? @db.VarChar(255)
+
+  @@index([empresa], map: "empresa")
+  @@index([proyecto], map: "proyecto")
+}
+
+model ra_asistencia {
+  id             Int       @id @default(autoincrement())
+  id_usuario     Int?
+  id_proyecto    Int?
+  fecha          DateTime? @db.DateTime(0)
+  foto_path      String?   @db.VarChar(255)
+  latitud        Decimal?  @db.Decimal(9, 6)
+  longitud       Decimal?  @db.Decimal(9, 6)
+  ingresado_por  Int?
+  ip             String?   @db.VarChar(50)
+  tag_google_api String?   @db.VarChar(255)
+  fecha_unica    DateTime? @db.Date
+  observacion    String?   @db.VarChar(255)
+  fecha_ingreso  DateTime? @db.DateTime(0)
+  usuarios       usuarios? @relation(fields: [id_usuario], references: [Id_Ejecutivo], map: "ra_asistencia_ibfk_1")
+
+  @@unique([id_usuario, fecha_unica, id_proyecto], map: "id_usuario")
+}
+
+model ra_periodos_asistencia {
+  id_periodo Int       @id @default(autoincrement())
+  inicio     DateTime? @db.Date
+  fin        DateTime? @db.Date
+  texto      String?   @db.VarChar(255)
+}
+
+model reversa_cuotas {
+  id                 Int  @id @default(autoincrement())
+  id_reversa         Int?
+  id_cuota_reversada Int?
+}
+
+model reversas {
+  id_reversa         Int       @id @default(autoincrement())
+  id_usuario         Int?
+  fecha              DateTime? @db.DateTime(0)
+  parcela            String?   @db.VarChar(100)
+  monto_pago         Int?
+  id_usuario_pago    Int?
+  fecha_pago         DateTime? @db.Date
+  fecha_proceso_pago DateTime? @db.DateTime(0)
+  motivo             String?   @db.VarChar(255)
+  monto_uf           Decimal?  @db.Decimal(14, 8)
+}
+
+model sco_carta_oferta {
+  id_co                                                String                      @id @unique(map: "id_co") @db.VarChar(40)
+  id_parcela                                           Int?
+  valor_co                                             Decimal?                    @db.Decimal(10, 2)
+  fecha_co                                             DateTime?                   @db.Date
+  vendedor                                             Int?
+  jefe_proy_i                                          Int?
+  jefe_proy_a                                          Int?
+  agente_call                                          Int?
+  confirmador_call                                     Int?
+  super_call                                           Int?
+  guia                                                 Int?
+  cerrador                                             Int?
+  gerente_v                                            Int?
+  modalidad_pago                                       Int?
+  valor_gc                                             Decimal?                    @db.Decimal(10, 2)
+  valor_go                                             Decimal?                    @db.Decimal(10, 2)
+  extras                                               String?                     @db.Text
+  fechahora_ingreso                                    DateTime?                   @db.DateTime(0)
+  ingresada_por                                        Int?
+  id_estado_co                                         Int?
+  fecha_firma_cliente                                  DateTime?                   @db.Date
+  fecha_act_firma                                      DateTime?                   @db.DateTime(0)
+  fecha_firma_inm                                      DateTime?                   @db.Date
+  fecha_act_firma_inm                                  DateTime?                   @db.DateTime(0)
+  fecha_cumplimiento_condiciones_comision              DateTime?                   @db.Date
+  procesable                                           Int?
+  fecha_pago_procesable                                DateTime?                   @db.Date
+  procesable_a_pago                                    Int?
+  fecha_pago_procesablepago                            DateTime?                   @db.Date
+  comp_financiamiento                                  Int?
+  obs_com_co                                           String?                     @db.VarChar(255)
+  pasado_a_scob                                        Int?
+  notaria_escritura                                    Int?
+  dia_cuota                                            Int?
+  detalle_pago                                         String?                     @db.VarChar(1500)
+  modalidad_construccion                               Int?
+  tipo_co                                              Int?
+  parcela_ant                                          Int?
+  ggcc_gratis                                          Int?
+  regalo_membresia                                     Int?
+  cvh_inmediata                                        Int?
+  sco_estados_procesablepago                           sco_estados_procesablepago? @relation(fields: [procesable_a_pago], references: [id_procesable], map: "sco_carta_oferta_ibfk_10")
+  sco_estados_procesable                               sco_estados_procesable?     @relation(fields: [procesable], references: [id_procesable], map: "sco_carta_oferta_ibfk_11")
+  sys_parcelas                                         sys_parcelas?               @relation(fields: [id_parcela], references: [id_parcela], map: "sco_carta_oferta_ibfk_12")
+  usuarios_sco_carta_oferta_vendedorTousuarios         usuarios?                   @relation("sco_carta_oferta_vendedorTousuarios", fields: [vendedor], references: [Id_Ejecutivo], map: "sco_carta_oferta_ibfk_2")
+  usuarios_sco_carta_oferta_jefe_proy_iTousuarios      usuarios?                   @relation("sco_carta_oferta_jefe_proy_iTousuarios", fields: [jefe_proy_i], references: [Id_Ejecutivo], map: "sco_carta_oferta_ibfk_3")
+  usuarios_sco_carta_oferta_agente_callTousuarios      usuarios?                   @relation("sco_carta_oferta_agente_callTousuarios", fields: [agente_call], references: [Id_Ejecutivo], map: "sco_carta_oferta_ibfk_4")
+  usuarios_sco_carta_oferta_guiaTousuarios             usuarios?                   @relation("sco_carta_oferta_guiaTousuarios", fields: [guia], references: [Id_Ejecutivo], map: "sco_carta_oferta_ibfk_5")
+  usuarios_sco_carta_oferta_cerradorTousuarios         usuarios?                   @relation("sco_carta_oferta_cerradorTousuarios", fields: [cerrador], references: [Id_Ejecutivo], map: "sco_carta_oferta_ibfk_6")
+  usuarios_sco_carta_oferta_gerente_vTousuarios        usuarios?                   @relation("sco_carta_oferta_gerente_vTousuarios", fields: [gerente_v], references: [Id_Ejecutivo], map: "sco_carta_oferta_ibfk_7")
+  usuarios_sco_carta_oferta_confirmador_callTousuarios usuarios?                   @relation("sco_carta_oferta_confirmador_callTousuarios", fields: [confirmador_call], references: [Id_Ejecutivo], map: "sco_carta_oferta_ibfk_8")
+  usuarios_sco_carta_oferta_super_callTousuarios       usuarios?                   @relation("sco_carta_oferta_super_callTousuarios", fields: [super_call], references: [Id_Ejecutivo], map: "sco_carta_oferta_ibfk_9")
+
+  @@index([agente_call], map: "agente_call")
+  @@index([cerrador], map: "cerrador")
+  @@index([confirmador_call], map: "confirmador_call")
+  @@index([gerente_v], map: "gerente_v")
+  @@index([guia], map: "guia")
+  @@index([id_parcela], map: "id_parcela")
+  @@index([jefe_proy_i], map: "jefe_proy_i")
+  @@index([procesable], map: "procesable")
+  @@index([procesable_a_pago], map: "procesable_a_pago")
+  @@index([super_call], map: "super_call")
+  @@index([vendedor], map: "vendedor")
+}
+
+model sco_clientes_co {
+  id_relacion     Int       @id @default(autoincrement())
+  id_carta_oferta String?   @db.VarChar(100)
+  rut_cliente     Int?
+  relacion_co     String?   @db.VarChar(255)
+  fecha_act       DateTime? @db.DateTime(0)
+  usuario_act     Int?
+  activo          Int?
+
+  @@unique([id_carta_oferta, rut_cliente], map: "id_carta_oferta")
+}
+
+model sco_estado_co {
+  id_estado_co   Int     @id @default(autoincrement())
+  estado         String? @db.VarChar(255)
+  activo         Int?
+  co_modificable Int?
+}
+
+model sco_estados_procesable {
+  id_procesable    Int                @id @default(autoincrement())
+  nombre           String?            @db.VarChar(100)
+  texto_detalle_co String?            @db.VarChar(255)
+  sco_carta_oferta sco_carta_oferta[]
+}
+
+model sco_estados_procesablepago {
+  id_procesable    Int                @id @default(autoincrement())
+  nombre           String?            @db.VarChar(100)
+  texto_detalle_co String?            @db.VarChar(255)
+  sco_carta_oferta sco_carta_oferta[]
+}
+
+model sco_grupo_usuario_monday {
+  id_grupo_usuario Int     @id @default(autoincrement())
+  id_grupo_monday  String? @db.VarChar(40)
+  id_usuario       Int?
+  descripcion      String? @db.VarChar(255)
+  activo           Int?
+}
+
+model sco_log_eventos {
+  id_log      Int       @id @default(autoincrement())
+  fechahora   DateTime? @db.DateTime(0)
+  tipo_evento String?   @db.VarChar(50)
+  descripcion String?   @db.VarChar(500)
+  usuario     Int?
+}
+
+model sco_modalidad_construccion {
+  id_modalidad_con  Int     @id @default(autoincrement())
+  nombre_modalidad  String? @db.VarChar(255)
+  texto_cartaoferta String? @db.VarChar(500)
+  activo            Int?
+}
+
+model sco_modalidad_pago {
+  id_modalidad     Int      @id @default(autoincrement())
+  nombre           String?  @db.VarChar(20)
+  descripcion      String?  @db.VarChar(255)
+  activo           Int?
+  go_asociados     Decimal? @db.Decimal(10, 2)
+  tipo_contrato_co String?  @db.VarChar(255)
+}
+
+model sco_pagos_co {
+  id_pago_co                    BigInt    @id
+  fecha_pago                    DateTime? @db.Date
+  fecha_ingreso                 DateTime? @db.DateTime(0)
+  monto_peso                    Int?
+  monto_uf                      Decimal?  @db.Decimal(10, 2)
+  banco_destino                 Int?
+  origen_pago                   Int?
+  ingresado_por                 Int?
+  fecha_validacion_contabilidad DateTime? @db.DateTime(0)
+  comprobante_contable          Int?
+  empresa_comprobante           String?   @db.VarChar(100)
+  validado_contabilidad         Int?
+  id_co                         String?   @db.VarChar(255)
+  medio_pago                    Int?
+  comentarios                   String?   @db.VarChar(255)
+  estado                        Int?
+  tipo_pago                     Int?
+  pagado_por                    Int?
+  usuarios                      usuarios? @relation(fields: [ingresado_por], references: [Id_Ejecutivo], map: "sco_pagos_co_ibfk_1")
+
+  @@index([ingresado_por], map: "ingresado_por")
+}
+
+model sco_tabla_comisiones {
+  id_tipo_comision  Int       @id @default(autoincrement())
+  cargo_comision    String?   @db.VarChar(20)
+  tipo              String?   @db.VarChar(20)
+  valor_comision    Decimal?  @db.Decimal(8, 2)
+  activa            Int?
+  fecha_act         DateTime? @db.DateTime(0)
+  columna_vinculada String?   @db.VarChar(255)
+}
+
+model sco_tipo_pie {
+  id_pie      Int      @id @default(autoincrement())
+  nombre_pie  String?  @db.VarChar(255)
+  desc_pie    String?  @db.VarChar(255)
+  txt_co      String?  @db.VarChar(500)
+  go_asociado Decimal? @db.Decimal(10, 2)
+  activo      Int?
+  txt_co_cvh  String?  @db.VarChar(500)
+}
+
+model sco_tipos_pago {
+  id_tipo   Int     @id @default(autoincrement())
+  tipo_pago String? @db.VarChar(50)
+  activo    Int?
+}
+
+model sl_atributos_ctas {
+  id_cuenta        Int     @id @default(autoincrement())
+  PCCODI           String? @db.VarChar(255)
+  nombre           String? @db.VarChar(255)
+  PCTIPO           String? @db.VarChar(255)
+  ccosto           String? @db.VarChar(255)
+  auxiliar         String? @db.VarChar(255)
+  documento        String? @db.VarChar(255)
+  PCEDOC           String? @db.VarChar(255)
+  conciliacion     String? @db.VarChar(255)
+  moneda_adicional String? @db.VarChar(255)
+  detalle_gasto    String? @db.VarChar(255)
+  PCPREC           String? @db.VarChar(255)
+  PCEPRC           String? @db.VarChar(255)
+  PCIFIN           String? @db.VarChar(255)
+  PCCOMON          String? @db.VarChar(255)
+  PCTPCM           String? @db.VarChar(255)
+  PCCAPP           String? @db.VarChar(255)
+  PCACTI           String? @db.VarChar(255)
+  moneda           String? @db.VarChar(255)
+  PCCODC           String? @db.VarChar(255)
+  PCDINBA          String? @db.VarChar(255)
+  PCCMCP           String? @db.VarChar(255)
+  PCIDMA           String? @db.VarChar(255)
+  PCCBADICI        String? @db.VarChar(255)
+  PCAjusteDifC     String? @db.VarChar(255)
+  PCFijaMonBase    String? @db.VarChar(255)
+  PCAfeEfe         String? @db.VarChar(255)
+  PCConEfe         String? @db.VarChar(255)
+  PCEfeSVS         String? @db.VarChar(255)
+  id_empresa       String? @db.VarChar(255)
+
+  @@index([PCCODI, id_empresa], map: "PCCODI")
+  @@index([PCCODI], map: "PCCODI_2")
+}
+
+model sl_empresas {
+  id_empresa              Int                       @id
+  nombre_base             String?                   @db.VarChar(30)
+  nombre_real             String?                   @db.VarChar(100)
+  sl_homologacion_cuentas sl_homologacion_cuentas[] @ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model sl_homologacion_cuentas {
+  cuenta_manager  BigInt?
+  nombre_cuenta   String?      @db.VarChar(255)
+  cuenta_softland String?      @db.VarChar(255)
+  nombre_softland String?      @db.VarChar(255)
+  id_empresa      Int?
+  sl_empresas     sl_empresas? @relation(fields: [id_empresa], references: [id_empresa], onDelete: Restrict, onUpdate: Restrict, map: "sl_homologacion_cuentas_ibfk_1")
+
+  @@index([cuenta_manager], map: "cuenta_manager")
+  @@index([cuenta_softland], map: "cuenta_softland")
+  @@index([id_empresa], map: "id_empresa")
+  @@ignore
+}
+
+model sl_homologacion_documentos {
+  id_homologacion    Int     @id @default(autoincrement())
+  documento_manager  String? @db.VarChar(255)
+  nombre_manager     String? @db.VarChar(255)
+  documento_softland String? @db.VarChar(255)
+  nombre_softland    String? @db.VarChar(255)
+
+  @@index([documento_manager], map: "documento_manager")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model sl_monedas {
+  id_moneda String? @db.VarChar(255)
+  Nombre    String? @db.VarChar(255)
+  Simbolo   String? @db.VarChar(255)
+
+  @@index([id_moneda], map: "id_moneda")
+  @@ignore
+}
+
+model sl_reporte_captura_mov_final {
+  EMPRESA_SL         String? @db.VarChar(255)
+  CVH                String? @db.VarChar(255)
+  cuenta             String? @db.VarChar(255)
+  debe               String? @default("0") @db.VarChar(255)
+  haber              String? @default("0") @db.VarChar(255)
+  comentarios        String? @db.VarChar(255)
+  valor_moneda       String? @default("0") @db.VarChar(255)
+  debe_moneda        String? @default("0") @db.VarChar(255)
+  haber_moneda       String? @default("0") @db.VarChar(255)
+  nousar1            String? @db.VarChar(255)
+  nousar2            String? @db.VarChar(255)
+  nousar3            String? @db.VarChar(255)
+  con_caja           String? @db.VarChar(255)
+  nousar5            String? @db.VarChar(255)
+  nousar6            String? @default("0") @db.VarChar(255)
+  detgasto           String? @db.VarChar(255)
+  cant_detg          String? @default("0") @db.VarChar(255)
+  ccos               String? @db.VarChar(255)
+  doc_conciliacion   String? @db.VarChar(255)
+  n_doc_conciliacion String? @default("0") @db.VarChar(255)
+  auxiliar           String? @db.VarChar(255)
+  documento          String? @db.VarChar(255)
+  n_docu             String? @default("0") @db.VarChar(255)
+  fecha_emision      String? @db.VarChar(255)
+  fecha_venc         String? @db.VarChar(255)
+  docu_ref           String? @db.VarChar(255)
+  n_docu_ref         String? @default("0") @db.VarChar(255)
+  corr               Int     @id @default(autoincrement())
+  det1               String? @default("0") @db.VarChar(255)
+  det2               String? @default("0") @db.VarChar(255)
+  det3               String? @default("0") @db.VarChar(255)
+  det4               String? @default("0") @db.VarChar(255)
+  det5               String? @default("0") @db.VarChar(255)
+  det6               String? @default("0") @db.VarChar(255)
+  det7               String? @default("0") @db.VarChar(255)
+  det8               String? @default("0") @db.VarChar(255)
+  det9               String? @default("0") @db.VarChar(255)
+  suma_det           String? @default("0") @db.VarChar(255)
+  nousar7            String? @default("0") @db.VarChar(255)
+  nousar8            String? @default("0") @db.VarChar(255)
+  comp               String? @db.VarChar(255)
+  nousar9            String? @db.VarChar(255)
+  nousar10           String? @db.VarChar(255)
+  cod_flujo          String? @db.VarChar(255)
+  flujo1             String? @default("0") @db.VarChar(255)
+  nousar11           String? @db.VarChar(255)
+  nousar12           String? @default("0") @db.VarChar(255)
+  nousar13           String? @db.VarChar(255)
+  nousar14           String? @default("0") @db.VarChar(255)
+  nousar15           String? @db.VarChar(255)
+  nousar16           String? @default("0") @db.VarChar(255)
+  nousar17           String? @db.VarChar(255)
+  nousar18           String? @default("0") @db.VarChar(255)
+  nousar19           String? @db.VarChar(255)
+  nousar20           String? @default("0") @db.VarChar(255)
+  nousar21           String? @db.VarChar(255)
+  nousar22           String? @default("0") @db.VarChar(255)
+  nousar23           String? @db.VarChar(255)
+  nousar24           String? @default("0") @db.VarChar(255)
+  nousar25           String? @db.VarChar(255)
+  nousar26           String? @default("0") @db.VarChar(255)
+  nousar27           String? @db.VarChar(255)
+  nousar28           String? @default("0") @db.VarChar(255)
+  nousar29           String? @default("0") @db.VarChar(255)
+  nousar30           String? @db.VarChar(255)
+  nousar31           String? @default("0") @db.VarChar(255)
+  nousar32           String? @default("0") @db.VarChar(255)
+  nousar33           String? @db.VarChar(255)
+  nousar34           String? @default("0") @db.VarChar(255)
+  nousar35           String? @default("0") @db.VarChar(255)
+  nousar36           String? @db.VarChar(255)
+  nousar37           String? @default("0") @db.VarChar(255)
+  nousar38           String? @default("0") @db.VarChar(255)
+  nousar39           String? @db.VarChar(255)
+  nousar40           String? @default("0") @db.VarChar(255)
+  nousar41           String? @default("0") @db.VarChar(255)
+  nousar42           String? @db.VarChar(255)
+  nousar43           String? @default("0") @db.VarChar(255)
+  nousar44           String? @default("0") @db.VarChar(255)
+  nousar45           String? @db.VarChar(255)
+  nousar46           String? @default("0") @db.VarChar(255)
+  nousar47           String? @default("0") @db.VarChar(255)
+  nousar48           String? @db.VarChar(255)
+  nousar49           String? @default("0") @db.VarChar(255)
+  nousar50           String? @default("0") @db.VarChar(255)
+  nousar51           String? @db.VarChar(255)
+  nousar52           String? @default("0") @db.VarChar(255)
+  nousar53           String? @default("0") @db.VarChar(255)
+  nousar54           String? @db.VarChar(255)
+  nousar55           String? @default("0") @db.VarChar(255)
+  nousar56           String? @default("0") @db.VarChar(255)
+  nousar57           String? @db.VarChar(255)
+  nousar58           String? @default("0") @db.VarChar(255)
+  nousar59           String? @default("0") @db.VarChar(255)
+  id_mov             String? @db.VarChar(255)
+}
+
+model sys_acceso_softwares {
+  id_sw_acceso  Int            @id @default(autoincrement())
+  id_usuario    Int?
+  id_software   Int?
+  activo        Int?
+  fecha_act     DateTime?      @db.DateTime(0)
+  fecha_des     DateTime?      @db.DateTime(0)
+  usuarios      usuarios?      @relation(fields: [id_usuario], references: [Id_Ejecutivo], onDelete: Cascade, map: "sys_acceso_softwares_ibfk_1")
+  sys_softwares sys_softwares? @relation(fields: [id_software], references: [id_software], onDelete: Cascade, map: "sys_acceso_softwares_ibfk_2")
+
+  @@unique([id_usuario, id_software], map: "id_usuario")
+  @@index([id_software], map: "id_software")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model sys_accionistas_ch {
+  Rut         String? @db.VarChar(255)
+  Propietario String? @db.VarChar(255)
+  Parcela     String? @db.VarChar(255)
+  num_accion  Int?
+  observacion String? @db.VarChar(255)
+  id_pagare   Int?
+
+  @@index([Rut], map: "Rut")
+  @@index([id_pagare], map: "id_pagare")
+  @@ignore
+}
+
+model sys_app_passwords {
+  id          Int       @id @default(autoincrement())
+  correo      String?   @db.VarChar(255)
+  clave       String?   @db.VarChar(255)
+  activo      String?   @db.VarChar(255)
+  fecha_desac DateTime? @db.DateTime(0)
+  motivo      String?   @db.VarChar(255)
+}
+
+model sys_calendario {
+  fecha              DateTime @id @db.Date
+  anio               Int      @db.SmallInt
+  mes                Int      @db.UnsignedTinyInt
+  dia                Int      @db.UnsignedTinyInt
+  trimestre          Int      @db.UnsignedTinyInt
+  semestre           Int      @db.UnsignedTinyInt
+  dia_anio           Int      @db.UnsignedSmallInt
+  semana_iso         Int      @db.UnsignedTinyInt
+  anio_iso           Int      @db.SmallInt
+  dia_semana_iso     Int      @db.UnsignedTinyInt
+  es_fin_de_semana   Boolean
+  nombre_mes         String   @db.VarChar(20)
+  nombre_dia         String   @db.VarChar(20)
+  primer_dia_mes     DateTime @db.Date
+  ultimo_dia_mes     DateTime @db.Date
+  es_ultimo_dia_mes  Boolean
+  mes_anio           String   @db.Char(7)
+  etiqueta_trimestre String   @db.Char(7)
+  es_feriado         Boolean  @default(false)
+  es_habil           Boolean
+
+  @@index([anio], map: "idx_cal_anio")
+  @@index([es_habil], map: "idx_cal_habil")
+  @@index([anio, mes], map: "idx_cal_mes")
+  @@index([anio_iso, semana_iso], map: "idx_cal_semana_iso")
+  @@index([anio, trimestre], map: "idx_cal_trimestre")
+}
+
+model sys_clientes {
+  id_cliente       Int               @id @default(autoincrement())
+  rut_cliente      Int?              @unique(map: "rut_cliente")
+  dv               String?           @db.VarChar(1)
+  rut_externo      String?           @db.VarChar(15)
+  nombre_cliente   String?           @db.VarChar(255)
+  nacionalidad     Int?
+  fecha_nacimiento DateTime?         @db.Date
+  profesion        Int?
+  ocupacion        String?           @db.VarChar(255)
+  creado_por       Int?
+  ult_act          DateTime?         @db.DateTime(0)
+  id_estado_civil  Int?
+  id_regimen       Int?
+  sys_correos      sys_correos[]
+  sys_direcciones  sys_direcciones[]
+  sys_telefonos    sys_telefonos[]
+}
+
+model sys_comunas {
+  Id_Comuna      Int             @id @default(autoincrement())
+  Comuna         String?         @db.VarChar(100)
+  LDN            String?         @db.VarChar(10)
+  Id_Provincia   Int?
+  deudores       deudores[]
+  sys_provincias sys_provincias? @relation(fields: [Id_Provincia], references: [Id_Provincia], onDelete: NoAction, onUpdate: NoAction, map: "sys_comunas_ibfk_1")
+  sys_notarias   sys_notarias[]
+
+  @@index([Id_Provincia], map: "fk_provincia")
+}
+
+model sys_construcciones {
+  id                       Int          @id @default(autoincrement())
+  id_parcela               Int          @unique(map: "id_parcela")
+  casa                     Boolean?     @default(false)
+  fecha_ingreso_casa       DateTime?    @db.DateTime(0)
+  fecha_aprobacion_casa    DateTime?    @db.Date
+  fecha_cons_casa          DateTime?    @db.Date
+  piscina                  Boolean?     @default(false)
+  fecha_ingreso_piscina    DateTime?    @db.DateTime(0)
+  fecha_aprobacion_piscina DateTime?    @db.Date
+  fecha_cons_piscina       DateTime?    @db.Date
+  quincho                  Boolean?     @default(false)
+  fecha_ingreso_quincho    DateTime?    @db.DateTime(0)
+  fecha_aprobacion_quincho DateTime?    @db.Date
+  fecha_cons_quincho       DateTime?    @db.Date
+  bodega                   Boolean?     @default(false)
+  fecha_ingreso_bodega     DateTime?    @db.DateTime(0)
+  fecha_aprobacion_bodega  DateTime?    @db.Date
+  fecha_cons_bodega        DateTime?    @db.Date
+  ult_actualizacion        DateTime?    @db.DateTime(0)
+  id_usuario_act           Int?
+  observaciones            String?      @db.VarChar(500)
+  sys_parcelas             sys_parcelas @relation(fields: [id_parcela], references: [id_parcela], onDelete: Cascade, map: "sys_construcciones_ibfk_1")
+}
+
+model sys_correos {
+  id_correo      Int           @id @default(autoincrement())
+  rut_cliente    Int?
+  correo         String?       @db.VarChar(255)
+  activo         Int?
+  fecha_creacion DateTime?     @db.DateTime(0)
+  fecha_act      DateTime?     @db.DateTime(0)
+  sys_clientes   sys_clientes? @relation(fields: [rut_cliente], references: [rut_cliente], onDelete: Cascade, map: "sys_correos_ibfk_1")
+
+  @@unique([rut_cliente, correo], map: "rut_cliente")
+}
+
+model sys_cortes_apelaciones {
+  id           Int     @id
+  nombre_corte String? @db.VarChar(100)
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model sys_deuda_anticipos {
+  rut_usuario    Int?
+  monto_anticipo Int?
+  saldo          Int?
+  ult_act        DateTime? @db.DateTime(0)
+
+  @@ignore
+}
+
+model sys_direcciones {
+  id_direccion       Int           @id @default(autoincrement())
+  rut_cliente        Int?
+  direccion_completa String?       @db.VarChar(255)
+  comuna             Int?
+  activo             Int?
+  fecha_creacion     DateTime?     @db.DateTime(0)
+  fecha_act          DateTime?     @db.DateTime(0)
+  sys_clientes       sys_clientes? @relation(fields: [rut_cliente], references: [rut_cliente], onDelete: Cascade, map: "sys_direcciones_ibfk_1")
+
+  @@unique([rut_cliente, direccion_completa, comuna], map: "rut_cliente")
+}
+
+model sys_estado_civil {
+  id                  Int     @id @default(autoincrement())
+  nombre_estado_civil String? @db.VarChar(60)
+}
+
+model sys_estados_gral_parcela {
+  id_estado_general Int            @id @default(autoincrement())
+  nombre_estado     String?        @db.VarChar(50)
+  desc_estado       String?        @db.VarChar(255)
+  activo            Int?
+  en_stock          Int?
+  sys_parcelas      sys_parcelas[]
+}
+
+model sys_estanqueParcela {
+  id_parcela_tanque Int       @id @default(autoincrement())
+  id_parcela        Int?
+  id_estanque       Int?
+  fecha_adicion     DateTime? @db.DateTime(0)
+  activo            Int?
+}
+
+model sys_estanques {
+  id_estanque     Int     @id @default(autoincrement())
+  nombre_estanque String? @db.VarChar(100)
+  numero          Int?
+  id_proyecto     Int?
+  caudalimetro    String? @db.VarChar(255)
+}
+
+model sys_extraParcela {
+  id_extraparcela Int       @id @default(autoincrement())
+  id_parcela      Int?
+  id_extra        Int?
+  fecha_adicion   DateTime? @db.DateTime(0)
+  agregado_por    Int?
+}
+
+model sys_extras {
+  id_extra     Int     @id @default(autoincrement())
+  nombre_extra String? @db.VarChar(100)
+}
+
+model sys_feriados {
+  id     Int       @id @default(autoincrement())
+  fecha  DateTime? @db.Date
+  motivo String?   @db.VarChar(100)
+  tipo   String?   @db.VarChar(30)
+}
+
+model sys_ggcc_comunes {
+  id_ggcc Int     @id @default(autoincrement())
+  ggcc    String? @db.VarChar(255)
+  activo  Int?
+}
+
+model sys_moradores {
+  id                Int       @id @default(autoincrement())
+  id_parcela        Int?
+  moradores         Int?
+  tipo_morador      String?   @db.VarChar(50)
+  observaciones     String?   @db.VarChar(255)
+  ult_actualizacion DateTime? @db.DateTime(0)
+  id_usuario_act    Int?
+}
+
+model sys_nacionalidades {
+  id_nacionalidad Int     @id @default(autoincrement())
+  Nacionalidad    String? @db.VarChar(100)
+  pais            String? @db.VarChar(100)
+  tipo            String? @db.VarChar(100)
+}
+
+model sys_nom_permisos {
+  id_permiso     Int     @id @default(autoincrement())
+  nombre_permiso String? @db.VarChar(50)
+  texto_mostrar  String? @db.VarChar(255)
+  descripcion    String? @db.VarChar(255)
+  activo         Int?
+}
+
+model sys_notarias {
+  id_notaria  Int          @id @default(autoincrement())
+  notaria     String?      @db.VarChar(255)
+  direccion   String?      @db.VarChar(255)
+  comuna      Int?
+  activa      Int?
+  fecha_des   DateTime?    @db.DateTime(0)
+  sys_comunas sys_comunas? @relation(fields: [comuna], references: [Id_Comuna], onDelete: Cascade, map: "sys_notarias_ibfk_1")
+
+  @@index([comuna], map: "comuna")
+}
+
+model sys_permisos_sw {
+  id_permiso Int       @id @default(autoincrement())
+  id_usuario Int?
+  permiso    String?   @db.VarChar(255)
+  fecha_act  DateTime? @db.DateTime(0)
+  fecha_des  DateTime? @db.DateTime(0)
+  usuarios   usuarios? @relation(fields: [id_usuario], references: [Id_Ejecutivo], map: "sys_permisos_sw_ibfk_1")
+
+  @@unique([id_usuario, permiso], map: "id_usuario")
+}
+
+model sys_provincias {
+  Id_Provincia Int           @id @default(autoincrement())
+  Provincia    String?       @db.VarChar(100)
+  Id_Region    Int?
+  sys_comunas  sys_comunas[]
+  sys_regiones sys_regiones? @relation(fields: [Id_Region], references: [Id_Region], onDelete: Cascade, map: "sys_provincias_ibfk_1")
+
+  @@index([Id_Region], map: "fk_region")
+}
+
+model sys_proyectos {
+  id_proyecto              Int                        @id
+  proyecto                 String?                    @db.VarChar(255)
+  activo                   Int?
+  elegible_asistencia      Int?
+  ubicacion                String?                    @db.VarChar(100)
+  agua                     Int?
+  luz                      Int?
+  ggcc                     Int?
+  clubhouse                Int?
+  contacto_proyecto        String?                    @db.VarChar(255)
+  php_co                   String?                    @db.VarChar(255)
+  co_empresa               String?                    @db.VarChar(100)
+  co_direccion             String?                    @db.VarChar(255)
+  co_comuna                String?                    @db.VarChar(100)
+  co_region                String?                    @db.VarChar(50)
+  co_fojas                 String?                    @db.VarChar(300)
+  co_conservador           String?                    @db.VarChar(50)
+  co_donde                 String?                    @db.VarChar(255)
+  co_extra_donde           String?                    @db.VarChar(255)
+  EMPRESA_SL               String?                    @db.VarChar(50)
+  siglas                   String?                    @db.VarChar(10)
+  php_co_ret               String?                    @db.VarChar(255)
+  orden_geo                Int?
+  cob_asignacion_proyectos cob_asignacion_proyectos[] @ignore
+
+  @@index([proyecto], map: "proyecto")
+}
+
+model sys_regimen_matrimonial {
+  id             Int     @id @default(autoincrement())
+  nombre_regimen String? @db.VarChar(100)
+}
+
+model sys_regiones {
+  Id_Region      Int              @id @default(autoincrement())
+  Nombre_Region  String?          @db.VarChar(100)
+  RegionRM       String?          @db.VarChar(100)
+  Region         String?          @db.VarChar(100)
+  sys_provincias sys_provincias[]
+}
+
+model sys_sociedades {
+  Id_Sociedad Int     @id @default(autoincrement())
+  Rut_Empre   String? @db.VarChar(255)
+  Nom_Empre   String? @db.VarChar(255)
+  Giro        String? @db.VarChar(255)
+  Direccion   String? @db.VarChar(255)
+  Comu        String? @db.VarChar(255)
+  Ciud        String? @db.VarChar(255)
+  Provi       String? @db.VarChar(255)
+  Rut_RL      String? @db.VarChar(255)
+  Nom_RL      String? @db.VarChar(255)
+}
+
+model sys_softwares {
+  id_software          Int                    @id @default(autoincrement())
+  nombre               String?                @db.VarChar(255)
+  descripcion          String?                @db.VarChar(255)
+  activo               Int?
+  sys_acceso_softwares sys_acceso_softwares[]
+}
+
+model sys_telefonos {
+  id_telefono    Int           @id @default(autoincrement())
+  rut_cliente    Int?
+  telefono       Int?
+  activo         Int?
+  fecha_creacion DateTime?     @db.DateTime(0)
+  fecha_act      DateTime?     @db.DateTime(0)
+  sys_clientes   sys_clientes? @relation(fields: [rut_cliente], references: [rut_cliente], onDelete: Cascade, map: "sys_telefonos_ibfk_1")
+
+  @@unique([rut_cliente, telefono], map: "rut_cliente")
+}
+
+model sys_tipo_parcela {
+  id_tipo_parcela  Int     @id @default(autoincrement())
+  nombre_tipo      String? @db.VarChar(30)
+  descripcion_tipo String? @db.VarChar(255)
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model temporal {
+  f2 String? @db.VarChar(255)
+  f3 String? @db.VarChar(255)
+  f4 String? @db.VarChar(255)
+  f5 String? @db.VarChar(255)
+
+  @@ignore
+}
+
+model tgr_deudas {
+  id             Int       @id @default(autoincrement())
+  rol_id         Int
+  cuota          String?   @db.VarChar(20)
+  valor_cuota    Int?
+  nro_folio      String?   @db.VarChar(50)
+  vencimiento    DateTime? @db.Date
+  total_a_pagar  Int?
+  codigo_barra   String?   @db.VarChar(100)
+  fecha_consulta DateTime? @default(now()) @db.Timestamp(0)
+  tgr_roles      tgr_roles @relation(fields: [rol_id], references: [id], onUpdate: Restrict, map: "tgr_deudas_ibfk_1")
+
+  @@index([rol_id], map: "rol_id")
+}
+
+model tgr_roles {
+  id           Int          @id @default(autoincrement())
+  region_id    Int
+  comuna_label String       @db.VarChar(100)
+  comuna_value String       @db.VarChar(50)
+  rol1         Int
+  subrol2      Int
+  activo       Boolean?     @default(true)
+  consultado   Int?         @default(0)
+  tgr_deudas   tgr_deudas[]
+}
+
+model tipo_pac {
+  id_pacpat                                                               Int                     @id @default(autoincrement())
+  Nombre                                                                  String?                 @db.VarChar(100)
+  cargar_en_toku                                                          Int?
+  pa_parcelas_servicios_pa_parcelas_servicios_pa_gastos_comunesTotipo_pac pa_parcelas_servicios[] @relation("pa_parcelas_servicios_pa_gastos_comunesTotipo_pac")
+  pa_parcelas_servicios_pa_parcelas_servicios_pa_aguaTotipo_pac           pa_parcelas_servicios[] @relation("pa_parcelas_servicios_pa_aguaTotipo_pac")
+  pa_parcelas_servicios_pa_parcelas_servicios_pa_electricidadTotipo_pac   pa_parcelas_servicios[] @relation("pa_parcelas_servicios_pa_electricidadTotipo_pac")
+  pa_parcelas_servicios_pa_parcelas_servicios_pa_membresiaTotipo_pac      pa_parcelas_servicios[] @relation("pa_parcelas_servicios_pa_membresiaTotipo_pac")
+  pagare_parcela_pagare_parcela_pacpat_activoTotipo_pac                   pagare_parcela[]        @relation("pagare_parcela_pacpat_activoTotipo_pac")
+  pagare_parcela_pagare_parcela_pa_ggccTotipo_pac                         pagare_parcela[]        @relation("pagare_parcela_pa_ggccTotipo_pac")
+  pagare_parcela_pagare_parcela_pa_aguaTotipo_pac                         pagare_parcela[]        @relation("pagare_parcela_pa_aguaTotipo_pac")
+  pagare_parcela_pagare_parcela_pa_elecTotipo_pac                         pagare_parcela[]        @relation("pagare_parcela_pa_elecTotipo_pac")
+  pagare_parcela_pagare_parcela_pa_club_houseTotipo_pac                   pagare_parcela[]        @relation("pagare_parcela_pa_club_houseTotipo_pac")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model tmp_morosidad_parcelas {
+  id_pagare     Int?
+  Parcela       String?  @db.VarChar(255)
+  morosas       Decimal? @db.Decimal(23, 0)
+  estado_pagare Int?
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model tmp_prueba {
+  id_contrato        Int?
+  Nombre             String? @db.VarChar(255)
+  Rut                String? @db.VarChar(255)
+  Fecha_del_contrato String? @map("Fecha del contrato") @db.VarChar(255)
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model tmp_ultima_fecha_pagare {
+  id_pagare Int?
+  ultima    DateTime? @db.Date
+
+  @@ignore
+}
+
+model valores_uf {
+  Fecha         DateTime  @id @db.Date
+  valorUF       Decimal?  @db.Decimal(8, 2)
+  actualizacion DateTime? @db.DateTime(0)
+
+  @@unique([Fecha, valorUF], map: "Fecha_2")
+  @@index([Fecha(sort: Desc)], map: "Fecha")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model valores_usd {
+  Fecha         DateTime? @db.Date
+  valorUSD      Decimal?  @db.Decimal(8, 2)
+  actualizacion DateTime? @db.DateTime(0)
+
+  @@index([Fecha], map: "Fecha")
+  @@ignore
+}
+
+model vinculo_pagos {
+  id           Int  @id @default(autoincrement())
+  id_pago_mult Int?
+  id_pago      Int?
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model xlsx_carga_pagos_masivo {
+  parcela       String? @db.VarChar(255)
+  monto_pago    String? @db.VarChar(255)
+  fecha_pago    String? @db.VarChar(255)
+  banco_origen  String? @db.VarChar(255)
+  banco_destino String? @db.VarChar(255)
+  medio_pago    String? @db.VarChar(255)
+  cuotas_pago   String? @db.VarChar(255)
+  observaciones String? @db.VarChar(255)
+  id_carga      String? @db.VarChar(255)
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model xlsx_carga_pagos_separado {
+  parcela       String? @db.VarChar(255)
+  monto_pago    String? @db.VarChar(255)
+  fecha_pago    String? @db.VarChar(255)
+  banco_origen  String? @db.VarChar(255)
+  banco_destino String? @db.VarChar(255)
+  medio_pago    String? @db.VarChar(255)
+  cuotas_pago   String? @db.VarChar(255)
+  observaciones String? @db.VarChar(255)
+
+  @@ignore
+}
+
+model xlsx_errores_carga_pago {
+  id_error        Int       @id @default(autoincrement())
+  descripcion     String?   @db.VarChar(255)
+  fechahora_error DateTime? @db.DateTime(0)
+  id_carga        String?   @db.VarChar(255)
+}
+
+model xlsx_registro_cargas {
+  id_carga        Int       @id @default(autoincrement())
+  fechahora_carga DateTime? @db.DateTime(0)
+  cargado_por     Int?
+  nombre_archivo  String?   @db.VarChar(255)
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model zbk_parcelas_deuda_agua {
+  id_deuda     Int       @default(0)
+  Parcela      String?   @db.VarChar(255)
+  fecha_pagare DateTime? @db.Date
+  id_pagare    Int?
+  aguaUF       Float?    @db.Float
+  deuda_uf     Decimal?  @db.Decimal(14, 8)
+  creditoUF    Float?    @db.Float
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model zbk_parcelas_deuda_club {
+  id_deuda     Int       @default(0)
+  Parcela      String?   @db.VarChar(255)
+  fecha_pagare DateTime? @db.Date
+  id_pagare    Int?
+  clubhouseUF  Float?    @db.Float
+  deuda_uf     Decimal?  @db.Decimal(14, 8)
+  creditoUF    Float?    @db.Float
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model zbk_parcelas_deuda_ggcc {
+  id_deuda     Int       @default(0)
+  Parcela      String?   @db.VarChar(255)
+  fecha_pagare DateTime? @db.Date
+  id_pagare    Int?
+  GGCC_UF      String?   @map("GGCC UF") @db.VarChar(255)
+  deuda_uf     Decimal?  @db.Decimal(14, 8)
+  creditoUF    Float?    @db.Float
+
+  @@ignore
+}
+
+enum la_contratos_servicio_tipo_servicio {
+  agua
+  electricidad
+}
+
+enum la_documentos_agua_tipo_documento {
+  factibilidad
+  dotacion
+}
+
+enum aircall_calls_direction {
+  inbound
+  outbound
+}
+
+enum pp_sim_plan_cuotas_tipo_cuota {
+  abono
+  redistribuida
+  sin_cambio
+  refinanciada
+}
+
+enum TK_tickets_entrada {
+  LLAMADA
+  VISITA
+  MONDAY
+  EMAIL
+}
+
+enum TK_tickets_motivo {
+  ENTREGA_FORMAL_PARCELA
+  INSTALACION_EMPALMES
+  PROYECTO_CONSTRUCCION
+  CERTIFICADOS_VARIOS
+  CONSULTAS_GENERALES
+  SOLICITUD_REUNION
+  SOLICITUD_CAMBIO_PARCELA
+  SOLICITUD_DEVOLUCION
+  REQUERIMIENTOS_VARIOS
+  VENTAS_TERCEROS
+  CESION_DERECHOS
+  RECLAMOS
+  ENVIO_COMUNICADO
+  INFORME_FORESTAL
+  ESTADO_ESCRITURACION
+  NO_ADHIERE_REGLAMENTO
+  RECADOS
+  REQUERIMIENTOS_COBRANZA
+  SUGERENCIAS
+  FELICITACIONES
 }

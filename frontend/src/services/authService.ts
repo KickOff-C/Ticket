@@ -1,6 +1,18 @@
+// src/services/authService.ts
 import { api } from './api';
 import { AuthResponse, LoginData, User } from '../types';
 import { mapUserFromBackend } from './mappers';
+
+// ✅ Agregar interfaz para changePassword
+export interface ChangePasswordData {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface ChangePasswordResponse {
+  success: boolean;
+  message: string;
+}
 
 export const authService = {
   async login(credentials: LoginData): Promise<AuthResponse> {
@@ -19,8 +31,15 @@ export const authService = {
     return mapUserFromBackend(response.data.profile);
   },
 
-  async changePassword(oldPassword: string, newPassword: string): Promise<void> {
-    await api.put('/auth/change-password', { oldPassword, newPassword });
+  // ✅ Método para cambiar contraseña
+  async changePassword(data: ChangePasswordData): Promise<ChangePasswordResponse> {
+    try {
+      const response = await api.put('/auth/change-password', data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error en changePassword:', error);
+      throw new Error(error.response?.data?.message || 'Error al cambiar contraseña');
+    }
   },
 
   logout(): void {

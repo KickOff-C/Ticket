@@ -19,7 +19,7 @@ router.use(authenticateToken);
 
 // Rutas protegidas
 router.get('/profile', AuthController.getProfile);
-router.put('/change-password', AuthController.changePassword);
+router.put('/change-password', authenticateToken, AuthController.changePassword);
 router.post('/refresh', AuthController.refreshToken);
 router.put('/profile', AuthController.updateProfile);
 router.post('/logout', AuthController.logout);

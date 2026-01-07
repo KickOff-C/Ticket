@@ -66,7 +66,7 @@ export interface InitializeUserTicketDataResult {
 
 export class AuthService {
   
-  // ✅ Login
+  // ✅ Login - CORREGIDO
   static async login(credentials: LoginCredentials): Promise<LoginResult> {
     try {
       const { username, password } = credentials;
@@ -89,13 +89,22 @@ export class AuthService {
         return { success: false, message: 'Usuario inactivo' };
       }
       
+      // 🔴 VERIFICACIÓN IMPORTANTE: ¿Qué campo usas realmente?
+      // Opción 1: Si usas password_tk (nuevo campo)
+      if (!user.password_tk) {
+        return { success: false, message: 'Contraseña no configurada' };
+      }
+      
       // Verificar contraseña (hash SHA256)
       const passwordHash = crypto
         .createHash('sha256')
         .update(password)
         .digest('hex');
       
-      if (user.password !== passwordHash) {
+      // 🔴 CAMBIAR AQUÍ:
+      // ANTES: if (user.password !== passwordHash)
+      // AHORA:
+      if (user.password_tk !== passwordHash) {
         return { success: false, message: 'Contraseña incorrecta' };
       }
       
@@ -162,7 +171,7 @@ export class AuthService {
     }
   }
   
-  // ✅ Cambiar contraseña
+  // ✅ Cambiar contraseña - CORREGIDO
   static async changePassword(userId: number, passwords: ChangePasswordRequest): Promise<ChangePasswordResult> {
     try {
       const { currentPassword, newPassword } = passwords;
@@ -175,13 +184,19 @@ export class AuthService {
         return { success: false, message: 'Usuario no encontrado' };
       }
       
+      // Verificar que existe password_tk
+      if (!user.password_tk) {
+        return { success: false, message: 'Contraseña no configurada' };
+      }
+      
       // Verificar contraseña actual
       const currentHash = crypto
         .createHash('sha256')
         .update(currentPassword)
         .digest('hex');
       
-      if (user.password !== currentHash) {
+      // AHORA:
+      if (user.password_tk !== currentHash) {
         return { success: false, message: 'Contraseña actual incorrecta' };
       }
       
@@ -191,10 +206,11 @@ export class AuthService {
         .update(newPassword)
         .digest('hex');
       
-      // Actualizar contraseña
+
+      // AHORA:
       await prisma.usuarios.update({
         where: { Id_Ejecutivo: userId },
-        data: { password: newHash }
+        data: { password_tk: newHash }
       });
       
       return { success: true, message: 'Contraseña cambiada exitosamente' };

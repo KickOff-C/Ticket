@@ -95,35 +95,48 @@ export class AuthController {
   // ✅ Método changePassword - Cambiar contraseña
   static async changePassword(req: Request, res: Response) {
     try {
-      const userId = (req as any).user?.Id_Ejecutivo;
-      
-      if (!userId) {
-        return res.status(401).json({ error: 'Usuario no autenticado' });
-      }
-      
+      const userId = (req as any).user?.Id_Ejecutivo; // Asumiendo que el middleware auth agrega el usuario
       const { currentPassword, newPassword } = req.body;
       
-      if (!currentPassword || !newPassword) {
-        return res.status(400).json({ error: 'Contraseña actual y nueva contraseña son requeridas' });
+      if (!userId) {
+        return res.status(401).json({ 
+          success: false, 
+          message: 'Usuario no autenticado' 
+        });
       }
       
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Contraseña actual y nueva contraseña son requeridas' 
+        });
+      }
+      
+      if (newPassword.length < 6) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'La nueva contraseña debe tener al menos 6 caracteres' 
+        });
+      }
+      
+      // Llamar al servicio del backend
       const result = await AuthService.changePassword(userId, {
         currentPassword,
         newPassword
       });
       
-      if (!result.success) {
-        return res.status(400).json({ error: result.message });
+      if (result.success) {
+        return res.status(200).json(result);
+      } else {
+        return res.status(400).json(result);
       }
       
-      res.status(200).json({
-        success: true,
-        message: 'Contraseña cambiada exitosamente'
-      });
-      
     } catch (error: any) {
-      console.error('Error cambiando contraseña:', error);
-      res.status(500).json({ error: 'Error interno del servidor' });
+      console.error('Error en changePassword controller:', error);
+      return res.status(500).json({ 
+        success: false, 
+        message: error.message || 'Error interno del servidor al cambiar contraseña' 
+      });
     }
   }
   

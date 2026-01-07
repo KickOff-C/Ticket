@@ -1,7 +1,10 @@
 // src/services/ticketService.ts
 import { prisma } from '../app';
+import { TicketHelpers } from '../helpers/ticketHelpers';
 
 export class TicketService {
+  // ==================== MÉTODOS DE CREACIÓN ====================
+
   /**
    * Crear un nuevo ticket regular
    */
@@ -12,6 +15,10 @@ export class TicketService {
     creatorId: number;
     areaId: number;
     assignedToId?: number | null;
+    entrada?: string;
+    motivo?: string;
+    parcelaId?: number | null;
+    propietarioId?: number | null;
   }) {
     try {
       // Verificar que el creador existe y está activo
@@ -53,14 +60,53 @@ export class TicketService {
         }
       }
 
+      // Validar entrada si se proporciona
+      if (data.entrada && !['LLAMADA', 'VISITA', 'MONDAY', 'EMAIL'].includes(data.entrada)) {
+        throw new Error('Tipo de entrada inválido');
+      }
+
+      // Validar parcela si se proporciona
+      if (data.parcelaId) {
+        const parcela = await prisma.sys_parcelas.findUnique({
+          where: { id_parcela: data.parcelaId }
+        });
+        if (!parcela) {
+          throw new Error('Parcela no encontrada');
+        }
+      }
+
+      // Validar propietario si se proporciona
+      if (data.propietarioId) {
+        const propietario = await prisma.deudores.findUnique({
+          where: { id: data.propietarioId }
+        });
+        if (!propietario) {
+          throw new Error('Propietario no encontrado');
+        }
+
+        // Verificar que el propietario pertenece a la parcela seleccionada
+        if (data.parcelaId && propietario.parcela) {
+          const parcelaPropietario = await prisma.sys_parcelas.findUnique({
+            where: { codigo_parcela: propietario.parcela }
+          });
+          if (parcelaPropietario?.id_parcela !== data.parcelaId) {
+            console.warn('El propietario seleccionado no pertenece a la parcela indicada');
+          }
+        }
+      }
+
       const ticket = await prisma.tK_tickets.create({
         data: {
           title: data.title.trim(),
           description: data.description.trim(),
           priority: data.priority || 'MEDIA',
+          entrada: data.entrada,
+          motivo: data.motivo,
           creatorId: data.creatorId,
           areaId: data.areaId,
           assignedToId: data.assignedToId || null,
+          parcelaId: data.parcelaId || null,
+          propietarioId: data.propietarioId || null,
           lastActivityAt: new Date()
         },
         include: {
@@ -85,6 +131,22 @@ export class TicketService {
               id_area: true,
               nombre_area: true
             }
+          },
+          parcela: {
+            select: {
+              id_parcela: true,
+              codigo_parcela: true,
+              nombre_legal: true,
+              proyecto: true
+            }
+          },
+          propietario: {
+            select: {
+              id: true,
+              nombre: true,
+              rut: true,
+              mail: true
+            }
           }
         }
       });
@@ -95,11 +157,15 @@ export class TicketService {
           ticketId: ticket.id,
           action: 'TICKET_CREATED',
           userId: data.creatorId,
-          details: `Ticket "${data.title}" creado con prioridad ${data.priority || 'MEDIA'}`,
+          details: `Ticket "${data.title}" creado`,
           newValue: JSON.stringify({
             title: ticket.title,
             priority: ticket.priority,
             status: ticket.status,
+            entrada: data.entrada || 'No especificado',
+            motivo: data.motivo || 'No especificado',
+            parcela: ticket.parcela?.codigo_parcela || 'No especificada',
+            propietario: ticket.propietario?.nombre || 'No especificado',
             assignedTo: data.assignedToId ? `Usuario ID: ${data.assignedToId}` : 'Sin asignar',
             areaId: data.areaId
           })
@@ -219,6 +285,558 @@ export class TicketService {
     }
   }
 
+  // ==================== MÉTODOS DE CONSULTA ====================
+
+  /**
+   * Obtener tickets para un usuario según su rol
+   */
+  static async getTicketsForUser(userId: number, userRole: string, userAreaId: number | null, filters: {
+    status?: string;
+    priority?: string;
+    showClosed?: boolean;
+    minimal?: boolean;
+  } = {}) {
+    try {
+      // Obtener información completa del usuario
+      const user = await prisma.usuarios.findUnique({
+        where: { Id_Ejecutivo: userId },
+        include: { ticketData: true }
+      });
+
+      if (!user) {
+        throw new Error('Usuario no encontrado');
+      }
+
+      const effectiveUserRole = user.ticketData?.role || userRole || 'USER';
+
+      // Construir where clause según rol y filtros
+      let whereClause: any = {};
+
+      switch (effectiveUserRole) {
+        case 'USER':
+          whereClause = {
+            OR: [
+              { creatorId: userId },
+              { assignedToId: userId }
+            ]
+          };
+          break;
+        case 'MANAGER':
+          whereClause = { areaId: userAreaId };
+          break;
+        case 'ADMIN':
+          whereClause = { areaId: userAreaId };
+          break;
+        case 'SUPERADMIN':
+          // SUPERADMIN ve todos los tickets
+          break;
+        default:
+          whereClause = { creatorId: userId };
+      }
+
+      // Aplicar filtros de estado
+      if (filters.status && filters.status !== 'all') {
+        whereClause.status = filters.status;
+      } else if (!filters.showClosed) {
+        whereClause.status = { not: 'CERRADO' };
+      }
+
+      // Aplicar filtro de prioridad
+      if (filters.priority) {
+        whereClause.priority = filters.priority;
+      }
+
+      // Definir includes base
+      const baseInclude = {
+        creator: {
+          select: {
+            Id_Ejecutivo: true,
+            Nombre: true,
+            Login: true,
+            Correo: true
+          }
+        },
+        assignedTo: {
+          select: {
+            Id_Ejecutivo: true,
+            Nombre: true,
+            Login: true,
+            Correo: true
+          }
+        },
+        area: {
+          select: {
+            id_area: true,
+            nombre_area: true
+          }
+        },
+        // Nuevas relaciones
+        parcela: {
+          select: {
+            id_parcela: true,
+            codigo_parcela: true,
+            nombre_legal: true,
+            proyecto: true
+          }
+        },
+        propietario: {
+          select: {
+            id: true,
+            nombre: true,
+            rut: true
+          }
+        }
+      };
+
+      const fullInclude = {
+        ...baseInclude,
+        comments: {
+          include: {
+            user: {
+              select: {
+                Id_Ejecutivo: true,
+                Nombre: true,
+                Login: true,
+                Correo: true
+              }
+            }
+          },
+          orderBy: { createdAt: 'asc' }
+        },
+        transfers: {
+          include: {
+            fromArea: {
+              select: {
+                id_area: true,
+                nombre_area: true
+              }
+            },
+            toArea: {
+              select: {
+                id_area: true,
+                nombre_area: true
+              }
+            },
+            requestedBy: {
+              select: {
+                Id_Ejecutivo: true,
+                Nombre: true,
+                Login: true,
+                Correo: true
+              }
+            },
+            approvedBy: {
+              select: {
+                Id_Ejecutivo: true,
+                Nombre: true,
+                Login: true,
+                Correo: true
+              }
+            }
+          }
+        },
+        history: {
+          include: {
+            user: {
+              select: {
+                Id_Ejecutivo: true,
+                Nombre: true,
+                Login: true,
+                Correo: true
+              }
+            }
+          },
+          orderBy: { createdAt: 'asc' }
+        }
+      };
+
+      const tickets = await prisma.tK_tickets.findMany({
+        where: whereClause,
+        include: filters.minimal ? baseInclude : fullInclude,
+        orderBy: { updatedAt: 'desc' }
+      });
+
+      // Transformar tickets para frontend
+      const ticketsTransformados = tickets.map(ticket => ({
+        ...ticket,
+        entradaFormatted: TicketHelpers.formatEntrada(ticket.entrada),
+        motivoFormatted: TicketHelpers.formatMotivo(ticket.motivo),
+        parcelaInfo: ticket.parcela ? 
+          `${ticket.parcela.codigo_parcela} - ${ticket.parcela.nombre_legal}` : 
+          null,
+        propietarioInfo: ticket.propietario ? 
+          `${ticket.propietario.nombre} (${ticket.propietario.rut})` : 
+          null,
+        displayInfo: {
+          parcela: ticket.parcela ? 
+            `${ticket.parcela.codigo_parcela} - ${ticket.parcela.nombre_legal}` : 
+            'No especificada',
+          propietario: ticket.propietario ? 
+            `${ticket.propietario.nombre} (${ticket.propietario.rut})` : 
+            'No especificado',
+          proyecto: ticket.parcela?.proyecto || 'No especificado',
+          entrada: TicketHelpers.formatEntrada(ticket.entrada),
+          motivo: TicketHelpers.formatMotivo(ticket.motivo)
+        }
+      }));
+
+      // Obtener estadísticas para metadata
+      const statsWhereClause = { ...whereClause };
+      if (statsWhereClause.status) {
+        delete statsWhereClause.status;
+      }
+
+      const [totalTickets, closedTickets] = await Promise.all([
+        prisma.tK_tickets.count({ where: statsWhereClause }),
+        prisma.tK_tickets.count({ 
+          where: { ...statsWhereClause, status: 'CERRADO' } 
+        })
+      ]);
+
+      return {
+        tickets: ticketsTransformados,
+        metadata: {
+          total: totalTickets,
+          closed: closedTickets,
+          showingClosed: filters.showClosed || false,
+          hasClosedTickets: closedTickets > 0,
+          userRole: effectiveUserRole,
+          userAreaId
+        }
+      };
+
+    } catch (error) {
+      console.error('Error obteniendo tickets para usuario:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtener ticket por ID con todas las relaciones
+   */
+  static async getTicketById(ticketId: number) {
+    try {
+      const ticket = await prisma.tK_tickets.findUnique({
+        where: { id: ticketId },
+        include: {
+          creator: {
+            select: {
+              Id_Ejecutivo: true,
+              Nombre: true,
+              Login: true,
+              Correo: true,
+              ticketData: true
+            }
+          },
+          assignedTo: {
+            select: {
+              Id_Ejecutivo: true,
+              Nombre: true,
+              Login: true,
+              Correo: true,
+              ticketData: true
+            }
+          },
+          area: {
+            select: {
+              id_area: true,
+              nombre_area: true
+            }
+          },
+          parcela: {
+            select: {
+              id_parcela: true,
+              codigo_parcela: true,
+              nombre_legal: true,
+              proyecto: true,
+              sector: true,
+              rol: true,
+              superficie_total: true,
+              superficie_util: true
+            }
+          },
+          propietario: {
+            select: {
+              id: true,
+              nombre: true,
+              rut: true,
+              tipo_deudor: true,
+              mail: true,
+              fono: true
+            }
+          },
+          comments: {
+            include: {
+              user: {
+                select: {
+                  Id_Ejecutivo: true,
+                  Nombre: true,
+                  Login: true,
+                  Correo: true
+                }
+              }
+            },
+            orderBy: { createdAt: 'asc' }
+          },
+          transfers: {
+            include: {
+              fromArea: {
+                select: {
+                  id_area: true,
+                  nombre_area: true
+                }
+              },
+              toArea: {
+                select: {
+                  id_area: true,
+                  nombre_area: true
+                }
+              },
+              requestedBy: {
+                select: {
+                  Id_Ejecutivo: true,
+                  Nombre: true,
+                  Login: true,
+                  Correo: true
+                }
+              },
+              approvedBy: {
+                select: {
+                  Id_Ejecutivo: true,
+                  Nombre: true,
+                  Login: true,
+                  Correo: true
+                }
+              }
+            }
+          },
+          history: {
+            include: {
+              user: {
+                select: {
+                  Id_Ejecutivo: true,
+                  Nombre: true,
+                  Login: true,
+                  Correo: true
+                }
+              }
+            },
+            orderBy: { createdAt: 'asc' }
+          }
+        }
+      });
+
+      if (!ticket) {
+        return null;
+      }
+
+      // Transformar ticket para frontend
+      const ticketTransformado = {
+        ...ticket,
+        entradaFormatted: TicketHelpers.formatEntrada(ticket.entrada),
+        motivoFormatted: TicketHelpers.formatMotivo(ticket.motivo),
+        displayInfo: {
+          parcela: ticket.parcela ? 
+            `${ticket.parcela.codigo_parcela} - ${ticket.parcela.nombre_legal}` : 
+            'No especificada',
+          propietario: ticket.propietario ? 
+            `${ticket.propietario.nombre} (${ticket.propietario.rut})` : 
+            'No especificado',
+          proyecto: ticket.parcela?.proyecto || 'No especificado',
+          entrada: TicketHelpers.formatEntrada(ticket.entrada),
+          motivo: TicketHelpers.formatMotivo(ticket.motivo)
+        }
+      };
+
+      return ticketTransformado;
+    } catch (error) {
+      console.error('Error obteniendo ticket por ID:', error);
+      throw error;
+    }
+  }
+
+  // ==================== NUEVOS MÉTODOS DE BÚSQUEDA ====================
+
+  /**
+   * Obtener parcelas para búsqueda
+   */
+  static async getParcelas(search?: string) {
+    try {
+      const whereClause: any = {
+        seleccionable: 1,
+        existe: 1
+      };
+
+      if (search) {
+        whereClause.OR = [
+          { codigo_parcela: { contains: search } },
+          { nombre_legal: { contains: search } },
+          { rol: { contains: search } }
+        ];
+      }
+
+      const parcelas = await prisma.sys_parcelas.findMany({
+        where: whereClause,
+        select: {
+          id_parcela: true,
+          codigo_parcela: true,
+          nombre_legal: true,
+          proyecto: true,
+          sector: true,
+          rol: true,
+          superficie_total: true,
+          superficie_util: true,
+          estado_general: true,
+          propietarios: {
+            where: { activo: 1 },
+            select: {
+              id: true,
+              nombre: true,
+              rut: true,
+              tipo_deudor: true
+            }
+          }
+        },
+        orderBy: { codigo_parcela: 'asc' },
+        take: 50
+      });
+
+      return parcelas;
+    } catch (error) {
+      console.error('Error obteniendo parcelas:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtener propietarios de una parcela específica
+   */
+  static async getPropietariosByParcela(parcelaId: number) {
+    try {
+      const parcela = await prisma.sys_parcelas.findUnique({
+        where: { id_parcela: parcelaId },
+        include: {
+          propietarios: {
+            where: { activo: 1 },
+            select: {
+              id: true,
+              nombre: true,
+              rut: true,
+              tipo_deudor: true,
+              mail: true,
+              fono: true
+            }
+          }
+        }
+      });
+
+      if (!parcela) {
+        throw new Error('Parcela no encontrada');
+      }
+
+      return {
+        parcela: {
+          id_parcela: parcela.id_parcela,
+          codigo_parcela: parcela.codigo_parcela,
+          nombre_legal: parcela.nombre_legal,
+          proyecto: parcela.proyecto
+        },
+        propietarios: parcela.propietarios
+      };
+    } catch (error) {
+      console.error('Error obteniendo propietarios por parcela:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Buscar propietarios
+   */
+  static async searchPropietarios(search?: string) {
+    try {
+      const whereClause: any = { activo: 1 };
+
+      if (search) {
+        whereClause.OR = [
+          { nombre: { contains: search } },
+          { rut: { contains: search } },
+          { parcela: { contains: search } }
+        ];
+      }
+
+      const propietarios = await prisma.deudores.findMany({
+        where: whereClause,
+        select: {
+          id: true,
+          nombre: true,
+          rut: true,
+          parcela: true,
+          tipo_deudor: true,
+          mail: true,
+          fono: true,
+          parcelaRel: {
+            select: {
+              id_parcela: true,
+              codigo_parcela: true,
+              nombre_legal: true
+            }
+          }
+        },
+        orderBy: { nombre: 'asc' },
+        take: 50
+      });
+
+      return propietarios;
+    } catch (error) {
+      console.error('Error buscando propietarios:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtener opciones de entrada y motivo
+   */
+  static async getTicketTypes() {
+    try {
+      const tiposEntrada = [
+        { value: 'LLAMADA', label: 'Llamada' },
+        { value: 'VISITA', label: 'Visita' },
+        { value: 'MONDAY', label: 'Monday' },
+        { value: 'EMAIL', label: 'Email' }
+      ];
+
+      const motivosTicket = [
+        { value: 'ENTREGA_FORMAL_PARCELA', label: 'Entrega Formal de Parcela' },
+        { value: 'INSTALACION_EMPALMES', label: 'Instalación de Empalmes' },
+        { value: 'PROYECTO_CONSTRUCCION', label: 'Proyecto de Construcción' },
+        { value: 'CERTIFICADOS_VARIOS', label: 'Certificados Varios' },
+        { value: 'CONSULTAS_GENERALES', label: 'Consultas Generales' },
+        { value: 'SOLICITUD_REUNION', label: 'Solicitud de Reunión' },
+        { value: 'SOLICITUD_CAMBIO_PARCELA', label: 'Solicitud Cambio de Parcela' },
+        { value: 'SOLICITUD_DEVOLUCION', label: 'Solicitud Devolución de Dinero o Parcela' },
+        { value: 'REQUERIMIENTOS_VARIOS', label: 'Requerimientos Varios' },
+        { value: 'VENTAS_TERCEROS', label: 'Ventas entre Terceros' },
+        { value: 'CESION_DERECHOS', label: 'Cesión de Derechos' },
+        { value: 'RECLAMOS', label: 'Reclamos' },
+        { value: 'ENVIO_COMUNICADO', label: 'Envío Comunicado' },
+        { value: 'INFORME_FORESTAL', label: 'Informe Forestal' },
+        { value: 'ESTADO_ESCRITURACION', label: 'Estado Escrituración' },
+        { value: 'NO_ADHIERE_REGLAMENTO', label: 'No Adhiere al Reglamento' },
+        { value: 'RECADOS', label: 'Recados' },
+        { value: 'REQUERIMIENTOS_COBRANZA', label: 'Requerimientos Cobranza' },
+        { value: 'SUGERENCIAS', label: 'Sugerencias' },
+        { value: 'FELICITACIONES', label: 'Felicitaciones' }
+      ];
+
+      return { tiposEntrada, motivosTicket };
+    } catch (error) {
+      console.error('Error obteniendo tipos de ticket:', error);
+      throw error;
+    }
+  }
+
+  // ==================== MÉTODOS DE ACTUALIZACIÓN ====================
+
   /**
    * Agregar comentario a un ticket regular
    */
@@ -226,7 +844,11 @@ export class TicketService {
     try {
       // Verificar que el ticket existe
       const ticket = await prisma.tK_tickets.findUnique({
-        where: { id: ticketId }
+        where: { id: ticketId },
+        include: {
+          parcela: true,
+          propietario: true
+        }
       });
 
       if (!ticket) {
@@ -296,6 +918,21 @@ export class TicketService {
                 nombre_area: true
               }
             },
+            parcela: {
+              select: {
+                id_parcela: true,
+                codigo_parcela: true,
+                nombre_legal: true,
+                proyecto: true
+              }
+            },
+            propietario: {
+              select: {
+                id: true,
+                nombre: true,
+                rut: true
+              }
+            },
             comments: {
               include: {
                 user: {
@@ -321,7 +958,13 @@ export class TicketService {
             details: `Comentario agregado por ${user.Nombre || user.Login}`,
             newValue: JSON.stringify({
               commentId: comment.id,
-              contentPreview: content.length > 50 ? content.substring(0, 50) + '...' : content
+              contentPreview: content.length > 50 ? content.substring(0, 50) + '...' : content,
+              ticketInfo: {
+                entrada: ticket.entrada ? TicketHelpers.formatEntrada(ticket.entrada) : 'No especificado',
+                motivo: ticket.motivo ? TicketHelpers.formatMotivo(ticket.motivo) : 'No especificado',
+                parcela: ticket.parcela?.codigo_parcela || 'No especificada',
+                propietario: ticket.propietario?.nombre || 'No especificado'
+              }
             })
           }
         });
@@ -454,268 +1097,17 @@ export class TicketService {
   }
 
   /**
-   * Verificar alertas por inactividad de tickets
-   */
-  static async checkInactivityAlerts(ticketId: number) {
-    try {
-      const ticket = await prisma.tK_tickets.findUnique({
-        where: { id: ticketId },
-        select: {
-          id: true,
-          title: true,
-          status: true,
-          lastActivityAt: true,
-          creatorId: true,
-          assignedToId: true,
-          areaId: true
-        }
-      });
-
-      if (!ticket || !ticket.lastActivityAt) {
-        return;
-      }
-
-      const now = new Date();
-      const lastActivity = new Date(ticket.lastActivityAt);
-      const daysInactive = Math.floor((now.getTime() - lastActivity.getTime()) / (1000 * 60 * 60 * 24));
-
-      if (daysInactive >= 3 && daysInactive < 6) {
-        // Alerta amarilla - registrar en historial
-        await prisma.tK_ticket_history.create({
-          data: {
-            ticketId,
-            action: 'INACTIVITY_ALERT_YELLOW',
-            userId: 0, // 0 para alertas del sistema
-            details: `Ticket inactivo por ${daysInactive} días - Alerta amarilla`,
-            newValue: JSON.stringify({
-              daysInactive,
-              alertType: 'yellow',
-              lastActivity: ticket.lastActivityAt
-            })
-          }
-        });
-
-        console.log(`⚠️ Alerta amarilla - Ticket ${ticketId} inactivo por ${daysInactive} días`);
-
-      } else if (daysInactive >= 6) {
-        // Alerta roja - registrar en historial
-        await prisma.tK_ticket_history.create({
-          data: {
-            ticketId,
-            action: 'INACTIVITY_ALERT_RED',
-            userId: 0, // 0 para alertas del sistema
-            details: `Ticket inactivo por ${daysInactive} días - Alerta roja`,
-            newValue: JSON.stringify({
-              daysInactive,
-              alertType: 'red',
-              lastActivity: ticket.lastActivityAt
-            })
-          }
-        });
-
-        console.log(`🔴 Alerta roja - Ticket ${ticketId} inactivo por ${daysInactive} días`);
-
-        // Opcional: Aquí podrías agregar notificaciones por email o sistema de mensajes
-      }
-
-    } catch (error) {
-      console.error('Error verificando inactividad:', error);
-      // No lanzar error para no afectar el flujo principal
-    }
-  }
-
-  /**
-   * Obtener tickets para un usuario según su rol
-   */
-  static async getTicketsForUser(userId: number, userRole: string, userAreaId: number | null, filters: {
-    status?: string;
-    priority?: string;
-    showClosed?: boolean;
-    minimal?: boolean;
-  } = {}) {
-    try {
-      // Obtener información completa del usuario
-      const user = await prisma.usuarios.findUnique({
-        where: { Id_Ejecutivo: userId },
-        include: { ticketData: true }
-      });
-
-      if (!user) {
-        throw new Error('Usuario no encontrado');
-      }
-
-      const effectiveUserRole = user.ticketData?.role || userRole || 'USER';
-
-      // Construir where clause según rol y filtros
-      let whereClause: any = {};
-
-      switch (effectiveUserRole) {
-        case 'USER':
-          whereClause = {
-            OR: [
-              { creatorId: userId },
-              { assignedToId: userId }
-            ]
-          };
-          break;
-        case 'MANAGER':
-          whereClause = { areaId: userAreaId };
-          break;
-        case 'ADMIN':
-          whereClause = { areaId: userAreaId };
-          break;
-        case 'SUPERADMIN':
-          // SUPERADMIN ve todos los tickets
-          break;
-        default:
-          whereClause = { creatorId: userId };
-      }
-
-      // Aplicar filtros de estado
-      if (filters.status && filters.status !== 'all') {
-        whereClause.status = filters.status;
-      } else if (!filters.showClosed) {
-        whereClause.status = { not: 'CERRADO' };
-      }
-
-      // Aplicar filtro de prioridad
-      if (filters.priority) {
-        whereClause.priority = filters.priority;
-      }
-
-      // Definir includes según si es minimal o completo
-      const baseInclude = {
-        creator: {
-          select: {
-            Id_Ejecutivo: true,
-            Nombre: true,
-            Login: true,
-            Correo: true
-          }
-        },
-        assignedTo: {
-          select: {
-            Id_Ejecutivo: true,
-            Nombre: true,
-            Login: true,
-            Correo: true
-          }
-        },
-        area: {
-          select: {
-            id_area: true,
-            nombre_area: true
-          }
-        }
-      };
-
-      const fullInclude = {
-        ...baseInclude,
-        comments: {
-          include: {
-            user: {
-              select: {
-                Id_Ejecutivo: true,
-                Nombre: true,
-                Login: true,
-                Correo: true
-              }
-            }
-          },
-          orderBy: { createdAt: 'asc' }
-        },
-        transfers: {
-          include: {
-            fromArea: {
-              select: {
-                id_area: true,
-                nombre_area: true
-              }
-            },
-            toArea: {
-              select: {
-                id_area: true,
-                nombre_area: true
-              }
-            },
-            requestedBy: {
-              select: {
-                Id_Ejecutivo: true,
-                Nombre: true,
-                Login: true,
-                Correo: true
-              }
-            },
-            approvedBy: {
-              select: {
-                Id_Ejecutivo: true,
-                Nombre: true,
-                Login: true,
-                Correo: true
-              }
-            }
-          }
-        },
-        history: {
-          include: {
-            user: {
-              select: {
-                Id_Ejecutivo: true,
-                Nombre: true,
-                Login: true,
-                Correo: true
-              }
-            }
-          },
-          orderBy: { createdAt: 'asc' }
-        }
-      };
-
-      const tickets = await prisma.tK_tickets.findMany({
-        where: whereClause,
-        include: filters.minimal ? baseInclude : fullInclude,
-        orderBy: { updatedAt: 'desc' }
-      });
-
-      // Obtener estadísticas para metadata
-      const statsWhereClause = { ...whereClause };
-      if (statsWhereClause.status) {
-        delete statsWhereClause.status;
-      }
-
-      const [totalTickets, closedTickets] = await Promise.all([
-        prisma.tK_tickets.count({ where: statsWhereClause }),
-        prisma.tK_tickets.count({ 
-          where: { ...statsWhereClause, status: 'CERRADO' } 
-        })
-      ]);
-
-      return {
-        tickets,
-        metadata: {
-          total: totalTickets,
-          closed: closedTickets,
-          showingClosed: filters.showClosed || false,
-          hasClosedTickets: closedTickets > 0,
-          userRole: effectiveUserRole,
-          userAreaId
-        }
-      };
-
-    } catch (error) {
-      console.error('Error obteniendo tickets para usuario:', error);
-      throw error;
-    }
-  }
-
-  /**
    * Cerrar un ticket
    */
   static async closeTicket(ticketId: number, userId: number) {
     try {
       const ticket = await prisma.tK_tickets.findUnique({
         where: { id: ticketId },
-        include: { creator: true }
+        include: { 
+          creator: true,
+          parcela: true,
+          propietario: true 
+        }
       });
 
       if (!ticket) {
@@ -760,6 +1152,21 @@ export class TicketService {
                 id_area: true,
                 nombre_area: true
               }
+            },
+            parcela: {
+              select: {
+                id_parcela: true,
+                codigo_parcela: true,
+                nombre_legal: true,
+                proyecto: true
+              }
+            },
+            propietario: {
+              select: {
+                id: true,
+                nombre: true,
+                rut: true
+              }
             }
           }
         });
@@ -786,7 +1193,13 @@ export class TicketService {
             userId,
             details: `Ticket cerrado por el creador`,
             oldValue: ticket.status,
-            newValue: 'CERRADO'
+            newValue: 'CERRADO',
+            newValueDetails: JSON.stringify({
+              entrada: ticket.entrada ? TicketHelpers.formatEntrada(ticket.entrada) : 'No especificado',
+              motivo: ticket.motivo ? TicketHelpers.formatMotivo(ticket.motivo) : 'No especificado',
+              parcela: ticket.parcela?.codigo_parcela || 'No especificada',
+              propietario: ticket.propietario?.nombre || 'No especificado'
+            })
           }
         });
 
@@ -877,6 +1290,21 @@ export class TicketService {
                 id_area: true,
                 nombre_area: true
               }
+            },
+            parcela: {
+              select: {
+                id_parcela: true,
+                codigo_parcela: true,
+                nombre_legal: true,
+                proyecto: true
+              }
+            },
+            propietario: {
+              select: {
+                id: true,
+                nombre: true,
+                rut: true
+              }
             }
           }
         });
@@ -932,7 +1360,9 @@ export class TicketService {
         include: {
           area: true,
           assignedTo: true,
-          creator: true
+          creator: true,
+          parcela: true,
+          propietario: true
         }
       });
 
@@ -1011,6 +1441,21 @@ export class TicketService {
                 id_area: true,
                 nombre_area: true
               }
+            },
+            parcela: {
+              select: {
+                id_parcela: true,
+                codigo_parcela: true,
+                nombre_legal: true,
+                proyecto: true
+              }
+            },
+            propietario: {
+              select: {
+                id: true,
+                nombre: true,
+                rut: true
+              }
             }
           }
         });
@@ -1023,7 +1468,15 @@ export class TicketService {
             userId: currentUserId,
             oldValue: ticket.assignedTo ? ticket.assignedTo.Nombre : 'No asignado',
             newValue: assignedUser.Nombre,
-            details: `Ticket asignado a ${assignedUser.Nombre} por ${currentUser.Nombre || currentUser.Login}`
+            details: `Ticket asignado a ${assignedUser.Nombre} por ${currentUser.Nombre || currentUser.Login}`,
+            newValueDetails: JSON.stringify({
+              ticketInfo: {
+                entrada: ticket.entrada ? TicketHelpers.formatEntrada(ticket.entrada) : 'No especificado',
+                motivo: ticket.motivo ? TicketHelpers.formatMotivo(ticket.motivo) : 'No especificado',
+                parcela: ticket.parcela?.codigo_parcela || 'No especificada',
+                propietario: ticket.propietario?.nombre || 'No especificado'
+              }
+            })
           }
         });
 
@@ -1037,6 +1490,89 @@ export class TicketService {
     } catch (error) {
       console.error('Error asignando ticket:', error);
       throw error;
+    }
+  }
+
+  // ==================== MÉTODOS AUXILIARES ====================
+
+  /**
+   * Verificar alertas por inactividad de tickets
+   */
+  static async checkInactivityAlerts(ticketId: number) {
+    try {
+      const ticket = await prisma.tK_tickets.findUnique({
+        where: { id: ticketId },
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          lastActivityAt: true,
+          creatorId: true,
+          assignedToId: true,
+          areaId: true,
+          entrada: true,
+          motivo: true
+        }
+      });
+
+      if (!ticket || !ticket.lastActivityAt) {
+        return;
+      }
+
+      const now = new Date();
+      const lastActivity = new Date(ticket.lastActivityAt);
+      const daysInactive = Math.floor((now.getTime() - lastActivity.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (daysInactive >= 3 && daysInactive < 6) {
+        // Alerta amarilla - registrar en historial
+        await prisma.tK_ticket_history.create({
+          data: {
+            ticketId,
+            action: 'INACTIVITY_ALERT_YELLOW',
+            userId: 0, // 0 para alertas del sistema
+            details: `Ticket inactivo por ${daysInactive} días - Alerta amarilla`,
+            newValue: JSON.stringify({
+              daysInactive,
+              alertType: 'yellow',
+              lastActivity: ticket.lastActivityAt,
+              ticketInfo: {
+                entrada: ticket.entrada ? TicketHelpers.formatEntrada(ticket.entrada) : 'No especificado',
+                motivo: ticket.motivo ? TicketHelpers.formatMotivo(ticket.motivo) : 'No especificado'
+              }
+            })
+          }
+        });
+
+        console.log(`⚠️ Alerta amarilla - Ticket ${ticketId} inactivo por ${daysInactive} días`);
+
+      } else if (daysInactive >= 6) {
+        // Alerta roja - registrar en historial
+        await prisma.tK_ticket_history.create({
+          data: {
+            ticketId,
+            action: 'INACTIVITY_ALERT_RED',
+            userId: 0, // 0 para alertas del sistema
+            details: `Ticket inactivo por ${daysInactive} días - Alerta roja`,
+            newValue: JSON.stringify({
+              daysInactive,
+              alertType: 'red',
+              lastActivity: ticket.lastActivityAt,
+              ticketInfo: {
+                entrada: ticket.entrada ? TicketHelpers.formatEntrada(ticket.entrada) : 'No especificado',
+                motivo: ticket.motivo ? TicketHelpers.formatMotivo(ticket.motivo) : 'No especificado'
+              }
+            })
+          }
+        });
+
+        console.log(`🔴 Alerta roja - Ticket ${ticketId} inactivo por ${daysInactive} días`);
+
+        // Opcional: Aquí podrías agregar notificaciones por email o sistema de mensajes
+      }
+
+    } catch (error) {
+      console.error('Error verificando inactividad:', error);
+      // No lanzar error para no afectar el flujo principal
     }
   }
 
@@ -1106,5 +1642,33 @@ export class TicketService {
       console.error('Error obteniendo estadísticas de tickets:', error);
       throw error;
     }
+  }
+
+  /**
+   * Transformar ticket para frontend (método público para reutilizar)
+   */
+  static transformTicketForFrontend(ticket: any) {
+    return {
+      ...ticket,
+      entradaFormatted: TicketHelpers.formatEntrada(ticket.entrada),
+      motivoFormatted: TicketHelpers.formatMotivo(ticket.motivo),
+      parcelaInfo: ticket.parcela ? 
+        `${ticket.parcela.codigo_parcela} - ${ticket.parcela.nombre_legal}` : 
+        null,
+      propietarioInfo: ticket.propietario ? 
+        `${ticket.propietario.nombre} (${ticket.propietario.rut})` : 
+        null,
+      displayInfo: {
+        parcela: ticket.parcela ? 
+          `${ticket.parcela.codigo_parcela} - ${ticket.parcela.nombre_legal}` : 
+          'No especificada',
+        propietario: ticket.propietario ? 
+          `${ticket.propietario.nombre} (${ticket.propietario.rut})` : 
+          'No especificado',
+        proyecto: ticket.parcela?.proyecto || 'No especificado',
+        entrada: TicketHelpers.formatEntrada(ticket.entrada),
+        motivo: TicketHelpers.formatMotivo(ticket.motivo)
+      }
+    };
   }
 }

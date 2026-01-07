@@ -61,3 +61,32 @@ export interface Ticket {
   assignedToId?: number;
   areaId: number;
 }
+
+export interface TicketCreateData {
+  title: string;
+  description: string;
+  priority?: string;
+  assignedToId?: string;
+  entrada?: 'LLAMADA' | 'VISITA' | 'MONDAY' | 'EMAIL';
+  motivo?: string; // Usar el enum de motivos
+  parcelaId?: string;
+  propietarioId?: string;
+}
+
+export interface Parcela {
+  id_parcela: number;
+  codigo_parcela: string;
+  nombre_legal: string;
+  proyecto: string;
+  propietarios: Propietario[];
+}
+
+export interface Propietario {
+  id: number;
+  nombre: string;
+  rut: string;
+  parcela: string;
+  tipo_deudor: string;
+  mail?: string;
+  fono?: string;
+}

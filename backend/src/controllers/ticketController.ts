@@ -5,7 +5,17 @@ import { AuthRequest } from '../middleware/auth';
 export class TicketController {
   static async createTicket(req: AuthRequest, res: Response) {
     try {
-      const { title, description, priority = 'MEDIA', assignedToId } = req.body;
+      const { 
+        title, 
+        description, 
+        priority = 'MEDIA', 
+        assignedToId,
+        entrada,
+        motivo,
+        parcelaId,
+        propietarioId 
+      } = req.body;
+      
       const userId = req.user?.Id_Ejecutivo;
 
       if (!title?.trim() || !description?.trim()) {
@@ -56,14 +66,43 @@ export class TicketController {
         }
       }
 
+      // Validar entrada si se proporciona
+      if (entrada && !['LLAMADA', 'VISITA', 'MONDAY', 'EMAIL'].includes(entrada)) {
+        return res.status(400).json({ error: 'Tipo de entrada inválido' });
+      }
+
+      // Validar parcela si se proporciona
+      if (parcelaId) {
+        const parcela = await prisma.sys_parcelas.findUnique({
+          where: { id_parcela: parseInt(parcelaId) }
+        });
+        if (!parcela) {
+          return res.status(400).json({ error: 'Parcela no encontrada' });
+        }
+      }
+
+      // Validar propietario si se proporciona
+      if (propietarioId) {
+        const propietario = await prisma.deudores.findUnique({
+          where: { id: parseInt(propietarioId) }
+        });
+        if (!propietario) {
+          return res.status(400).json({ error: 'Propietario no encontrado' });
+        }
+      }
+
       const ticket = await prisma.tK_tickets.create({
         data: {
           title: title.trim(),
           description: description.trim(),
           priority,
+          entrada,
+          motivo,
           creatorId: userId,
           areaId: user.id_area,
           assignedToId: assignedToId ? parseInt(assignedToId) : null,
+          parcelaId: parcelaId ? parseInt(parcelaId) : null,
+          propietarioId: propietarioId ? parseInt(propietarioId) : null,
           lastActivityAt: new Date()
         },
         include: {
@@ -88,6 +127,23 @@ export class TicketController {
               id_area: true, 
               nombre_area: true 
             }
+          },
+          parcela: {
+            select: {
+              id_parcela: true,
+              codigo_parcela: true,
+              nombre_legal: true,
+              proyecto: true
+            }
+          },
+          propietario: {
+            select: {
+              id: true,
+              nombre: true,
+              rut: true,
+              mail: true,
+              fono: true
+            }
           }
         }
       });
@@ -97,11 +153,15 @@ export class TicketController {
           ticketId: ticket.id,
           action: 'TICKET_CREATED',
           userId: userId,
-          details: `Ticket "${title}" creado con prioridad ${priority}`,
+          details: `Ticket "${title}" creado`,
           newValue: JSON.stringify({
             title: ticket.title,
             priority: ticket.priority,
             status: ticket.status,
+            entrada: entrada || 'No especificado',
+            motivo: motivo || 'No especificado',
+            parcela: ticket.parcela?.codigo_parcela || 'No especificada',
+            propietario: ticket.propietario?.nombre || 'No especificado',
             assignedTo: assignedToId ? `Usuario ID: ${assignedToId}` : 'Sin asignar',
             area: user.area?.nombre_area
           })
@@ -1148,4 +1208,187 @@ export class TicketController {
 
     return false;
   }
+
+  static async getParcelas(req: AuthRequest, res: Response) {
+    try {
+      const { search } = req.query;
+      
+      const whereClause: any = {
+        seleccionable: 1, // Solo parcelas seleccionables
+        existe: 1 // Solo parcelas que existen
+      };
+
+      if (search) {
+        whereClause.OR = [
+          { codigo_parcela: { contains: search.toString() } },
+          { nombre_legal: { contains: search.toString() } },
+          { rol: { contains: search.toString() } }
+        ];
+      }
+
+      const parcelas = await prisma.sys_parcelas.findMany({
+        where: whereClause,
+        select: {
+          id_parcela: true,
+          codigo_parcela: true,
+          nombre_legal: true,
+          proyecto: true,
+          sector: true,
+          rol: true,
+          superficie_total: true,
+          superficie_util: true,
+          estado_general: true,
+          // Incluir propietarios relacionados
+          propietarios: {
+            where: { activo: 1 },
+            select: {
+              id: true,
+              nombre: true,
+              rut: true,
+              tipo_deudor: true,
+              mail: true,
+              fono: true
+            }
+          }
+        },
+        orderBy: { codigo_parcela: 'asc' },
+        take: 50 // Limitar resultados
+      });
+
+      res.json(parcelas);
+    } catch (error: unknown) {
+      console.error('Error obteniendo parcelas:', error);
+      res.status(500).json({ error: 'Error al obtener parcelas' });
+    }
+  }
+
+  static async getPropietariosByParcela(req: AuthRequest, res: Response) {
+    try {
+      const { parcelaId } = req.params;
+      
+      const parcela = await prisma.sys_parcelas.findUnique({
+        where: { id_parcela: parseInt(parcelaId) },
+        include: {
+          propietarios: {
+            where: { activo: 1 },
+            select: {
+              id: true,
+              nombre: true,
+              rut: true,
+              tipo_deudor: true,
+              mail: true,
+              fono: true,
+              direccion: true,
+              comuna: true
+            }
+          }
+        }
+      });
+
+      if (!parcela) {
+        return res.status(404).json({ error: 'Parcela no encontrada' });
+      }
+
+      res.json({
+        parcela: {
+          id_parcela: parcela.id_parcela,
+          codigo_parcela: parcela.codigo_parcela,
+          nombre_legal: parcela.nombre_legal,
+          proyecto: parcela.proyecto
+        },
+        propietarios: parcela.propietarios
+      });
+    } catch (error: unknown) {
+      console.error('Error obteniendo propietarios:', error);
+      res.status(500).json({ error: 'Error al obtener propietarios' });
+    }
+  }
+
+  static async searchPropietarios(req: AuthRequest, res: Response) {
+    try {
+      const { search } = req.query;
+      
+      const whereClause: any = {
+        activo: 1
+      };
+
+      if (search) {
+        whereClause.OR = [
+          { nombre: { contains: search.toString() } },
+          { rut: { contains: search.toString() } },
+          { parcela: { contains: search.toString() } } // Búsqueda por código de parcela
+        ];
+      }
+
+      const propietarios = await prisma.deudores.findMany({
+        where: whereClause,
+        select: {
+          id: true,
+          nombre: true,
+          rut: true,
+          parcela: true,
+          tipo_deudor: true,
+          mail: true,
+          fono: true,
+          // Incluir datos de la parcela relacionada
+          parcelaRel: {
+            select: {
+              id_parcela: true,
+              codigo_parcela: true,
+              nombre_legal: true,
+              proyecto: true
+            }
+          }
+        },
+        orderBy: { nombre: 'asc' },
+        take: 50
+      });
+
+      res.json(propietarios);
+    } catch (error: unknown) {
+      console.error('Error buscando propietarios:', error);
+      res.status(500).json({ error: 'Error al buscar propietarios' });
+    }
+  }
+  static async getTicketTypes(req: AuthRequest, res: Response) {
+  try {
+    const tiposEntrada = [
+      { value: 'LLAMADA', label: 'Llamada' },
+      { value: 'VISITA', label: 'Visita' },
+      { value: 'MONDAY', label: 'Monday' },
+      { value: 'EMAIL', label: 'Email' }
+    ];
+
+    const motivosTicket = [
+      { value: 'ENTREGA_FORMAL_PARCELA', label: 'Entrega Formal de Parcela' },
+      { value: 'INSTALACION_EMPALMES', label: 'Instalación de Empalmes' },
+      { value: 'PROYECTO_CONSTRUCCION', label: 'Proyecto de Construcción' },
+      { value: 'CERTIFICADOS_VARIOS', label: 'Certificados Varios' },
+      { value: 'CONSULTAS_GENERALES', label: 'Consultas Generales' },
+      { value: 'SOLICITUD_REUNION', label: 'Solicitud de Reunión' },
+      { value: 'SOLICITUD_CAMBIO_PARCELA', label: 'Solicitud Cambio de Parcela' },
+      { value: 'SOLICITUD_DEVOLUCION', label: 'Solicitud Devolución de Dinero o Parcela' },
+      { value: 'REQUERIMIENTOS_VARIOS', label: 'Requerimientos Varios' },
+      { value: 'VENTAS_TERCEROS', label: 'Ventas entre Terceros' },
+      { value: 'CESION_DERECHOS', label: 'Cesión de Derechos' },
+      { value: 'RECLAMOS', label: 'Reclamos' },
+      { value: 'ENVIO_COMUNICADO', label: 'Envío Comunicado' },
+      { value: 'INFORME_FORESTAL', label: 'Informe Forestal' },
+      { value: 'ESTADO_ESCRITURACION', label: 'Estado Escrituración' },
+      { value: 'NO_ADHIERE_REGLAMENTO', label: 'No Adhiere al Reglamento' },
+      { value: 'RECADOS', label: 'Recados' },
+      { value: 'REQUERIMIENTOS_COBRANZA', label: 'Requerimientos Cobranza' },
+      { value: 'SUGERENCIAS', label: 'Sugerencias' },
+      { value: 'FELICITACIONES', label: 'Felicitaciones' }
+    ];
+
+    res.json({
+      tiposEntrada,
+      motivosTicket
+    });
+  } catch (error) {
+    console.error('Error obteniendo tipos de ticket:', error);
+    res.status(500).json({ error: 'Error al obtener tipos de ticket' });
+  }
+}
 }

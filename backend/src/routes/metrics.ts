@@ -1,4 +1,4 @@
-// src/routes/metricsRoutes.ts
+// src/routes/metrics.ts
 import { Router } from 'express';
 import { MetricsController } from '../controllers/metricsController';
 import { 
